@@ -8,7 +8,7 @@ module GoatAST where
     type Index = Int
 
     data BaseType 
-      = BoolType | IntType | FloatType | StringType --can we just use haskell basic types
+      = BoolType | IntType | FloatType --can we just use haskell basic types
         deriving (Show, Eq)
     
     data Lvalue 

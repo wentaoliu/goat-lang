@@ -17,7 +17,7 @@ module GoatAST where
     
     data Binop 
       =  Op_or | Op_and |  Op_eq | Op_neq | Op_less 
-        | OOp_lessq | Op_greater | Op_greaterq 
+        | Op_lessq | Op_greater | Op_greaterq 
         | Op_add | Op_minus | Op_mul | Op_div 
         deriving (Show, Eq)
     
@@ -36,7 +36,7 @@ module GoatAST where
         deriving (Show, Eq)
     
     data Array a
-      = a | a Index | a (Index, Index)
+      = Index a | (Index, Index) a
 
     data Decl 
       = Decl Ident BaseType
@@ -45,10 +45,10 @@ module GoatAST where
     data Stmt 
       = Assign Lvalue Expr
       | Assign Lvalue Index Expr        --is it better as (Int, Int) or Int Int
-      | Assign Lvalue (Index,Index) Expr  --could replace with Array Expr? does this even work?
+      | Assign Lvalue Index Index  Expr  --could replace with Array Expr? does this even work?
       | Read Lvalue
       | Read Lvalue Index       
-      | Read Lvalue (Index, Index)
+      | Read Lvalue Index Index
       | Write Expr
       | Call Ident [Expr]
       | If Expr [Stmt] 

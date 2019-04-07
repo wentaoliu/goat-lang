@@ -410,7 +410,7 @@ checkArgs "Goat" _
 pretty :: GoatProgram -> String
 pretty ast = printProgram ast
 
---from here, follow the GoatAST 
+--data GoatProgram = Program [Proc]
 formatProgram :: GoatProgram -> String
 formatProgram (Program []) = ""
 --rule 2: two consecutive procedures should be separated by a 
@@ -419,7 +419,7 @@ formatProgram (Program []) = ""
 formatProgram (Program (proc:procs)) 
     = formatProc proc ++ "\n\n" ++ formatProgram (Program procs)
 
---Proc Ident [Param] [Decl] [Stmt]
+--data Proc = Proc Ident [Param] [Decl] [Stmt]
 formatProc :: Proc -> String
 formatProc (Proc id param decl stmt) 
     = "proc " ++ id ++ "(" ++ formatParam param ++ ")" 

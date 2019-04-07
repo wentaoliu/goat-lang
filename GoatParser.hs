@@ -385,14 +385,12 @@ main
         ; input <- readFile (head args)
         ; let output = runParser pMain 0 "" input
         ; case output of
-            Right ast -> print $ pretty ast
+            Right ast -> print $ ast
             Left  err -> do { putStr "Parse error at "
                             ; print err
                             }
         }
 
-pretty :: Parser GoatProgram -> String
-pretty _ = "" --TODO
 
 
 checkArgs :: String -> [String] -> IO ()
@@ -406,3 +404,34 @@ checkArgs "Goat" _
     = do { putStrLn ("Usage: " ++ "Goat" ++ " filename\n\n")
         ; exitWith (ExitFailure 1)
         }
+
+
+
+pretty :: GoatProgram -> String
+pretty ast = printProgram ast
+
+--from here, follow the GoatAST 
+formatProgram :: GoatProgram -> String
+formatProgram (Program []) = ""
+--rule 2: two consecutive procedures should be separated by a 
+--single blank line => "\n\n". 
+--this assumes formatProc does not put a new line onto the end of each proc
+formatProgram (Program (proc:procs)) 
+    = formatProc proc ++ "\n\n" ++ formatProgram (Program procs)
+
+--Proc Ident [Param] [Decl] [Stmt]
+formatProc :: Proc -> String
+formatProc (Proc id param decl stmt) 
+    = "proc " ++ id ++ "(" ++ formatParam param ++ ")" 
+        ++ "\n" ++ formatDecl decl ++ "begin\n" ++ formatStmts stmt ++ "end" 
+
+
+formatParam :: Param -> String
+formatParam _ = ""
+
+formatDecl :: Param -> String
+formatDecl _ = ""
+
+formatStmts :: Param -> String
+formatStmts _ = ""
+        

@@ -210,11 +210,15 @@ main
         ; input <- readFile (head args)
         ; let output = runParser pMain 0 "" input
         ; case output of
-            Right ast -> print ast
+            Right ast -> print $ pretty ast
             Left  err -> do { putStr "Parse error at "
                             ; print err
                             }
         }
+
+pretty :: Parser GoatProgram -> String
+pretty _ = "" --TODO
+
 
 checkArgs :: String -> [String] -> IO ()
 checkArgs "Goat" ["-p",filename]

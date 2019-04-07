@@ -1,19 +1,16 @@
 import System.Exit
 
 
-add :: Int -> Int -> Int
-add x y = x+y
-
 
 checkArgs :: String -> [String] -> IO ()
-checkArgs _ ["-p", _]
+checkArgs "Goat" ["-p",filename]
     = return ()
-checkArgs "Goat" [_,filename]
+checkArgs "Goat" [filename]
     = do { putStrLn ("Sorry, code cannot be generated yet\n")
         ; exitWith (ExitFailure 1)
         }
-checkArgs progname _
-    = do { putStrLn ("Usage: " ++ progname ++ " filename\n\n")
+checkArgs "Goat" _
+    = do { putStrLn ("Usage: " ++ "Goat" ++ " filename\n\n")
         ; exitWith (ExitFailure 1)
         }
 

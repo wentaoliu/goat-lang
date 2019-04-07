@@ -217,6 +217,7 @@ main
         }
 
 checkArgs :: String -> [String] -> IO ()
+
 checkArgs _ ["-p", _]
     = return ()
 checkArgs "Goat" [_,filename]
@@ -227,5 +228,3 @@ checkArgs progname _
     = do { putStrLn ("Usage: " ++ progname ++ " filename\n\n")
         ; exitWith (ExitFailure 1)
         }
-
-

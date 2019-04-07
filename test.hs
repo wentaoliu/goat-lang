@@ -16,3 +16,9 @@ checkArgs progname _
     = do { putStrLn ("Usage: " ++ progname ++ " filename\n\n")
         ; exitWith (ExitFailure 1)
         }
+
+
+
+add :: Int -> Int -> Int -> Int
+add x y z = x+y+z
+

@@ -2,6 +2,7 @@ module Main where
 
 import GoatAST
 import Data.Char
+import Data.List
 import Text.Parsec
 import Text.Parsec.Language (emptyDef)
 import qualified Text.Parsec.Token as Q
@@ -382,10 +383,10 @@ main
   = do { progname <- getProgName
         ; args <- getArgs
         ; checkArgs progname args
-        ; input <- readFile (head args)
+        ; input <- readFile (last args)
         ; let output = runParser pMain 0 "" input
         ; case output of
-            Right ast -> print $ ast
+            Right ast -> putStr $ pretty ast
             Left  err -> do { putStr "Parse error at "
                             ; print err
                             }
@@ -394,21 +395,23 @@ main
 
 
 checkArgs :: String -> [String] -> IO ()
-checkArgs "Goat" ["-p",filename]
+--need to conform filename is a .gt file
+checkArgs _ ["-p",filename]
     = return ()
-checkArgs "Goat" [filename]
-    = do { putStrLn ("Sorry, code cannot be generated yet\n")
+checkArgs progname [filename]
+    = do { putStrLn (progname ++ "\n" ++ (concat [filename]) ++ "\nSorry, code cannot be generated yet\n")
         ; exitWith (ExitFailure 1)
         }
-checkArgs "Goat" _
-    = do { putStrLn ("Usage: " ++ "Goat" ++ " filename\n\n")
+checkArgs progname args
+    = do { putStrLn ((Data.List.intercalate " " args) ++ "\nUsage: " ++ progname ++ " filename\n\n")
         ; exitWith (ExitFailure 1)
         }
+
 
 
 
 pretty :: GoatProgram -> String
-pretty ast = printProgram ast
+pretty ast = formatProgram ast
 
 --data GoatProgram = Program [Proc]
 formatProgram :: GoatProgram -> String
@@ -426,12 +429,12 @@ formatProc (Proc id param decl stmt)
         ++ "\n" ++ formatDecl decl ++ "begin\n" ++ formatStmts stmt ++ "end" 
 
 
-formatParam :: Param -> String
+formatParam :: [Param] -> String
 formatParam _ = ""
 
-formatDecl :: Param -> String
+formatDecl :: [Decl] -> String
 formatDecl _ = ""
 
-formatStmts :: Param -> String
+formatStmts :: [Stmt] -> String
 formatStmts _ = ""
         

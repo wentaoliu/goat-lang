@@ -217,10 +217,15 @@ main
         }
 
 checkArgs :: String -> [String] -> IO ()
-checkArgs _ [filename]
+checkArgs _ ["-p", _]
     = return ()
+checkArgs "Goat" [_,filename]
+    = do { putStrLn ("Sorry, code cannot be generated yet\n")
+        ; exitWith (ExitFailure 1)
+        }
 checkArgs progname _
     = do { putStrLn ("Usage: " ++ progname ++ " filename\n\n")
         ; exitWith (ExitFailure 1)
         }
+
 

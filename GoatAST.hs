@@ -1,63 +1,79 @@
 module GoatAST where
 
     -----------------------------------
-    -- Specification of an AST for Goat 
+    -- Specification of an AST for Goat
     -----------------------------------
-    
-    type Ident = String
-    type Index = Int
-
-    data BaseType 
-      = BoolType | IntType | FloatType --can we just use haskell basic types
-        deriving (Show, Eq)
-    
-    data Lvalue 
-      = LId Ident
-        deriving (Show, Eq)
-    
-    data Binop 
-      =  Op_or | Op_and |  Op_eq | Op_neq | Op_less 
-        | Op_lessq | Op_greater | Op_greaterq 
-        | Op_add | Op_minus | Op_mul | Op_div 
-        deriving (Show, Eq)
-    
-    data Unop
-      = Op_not | Op_neg --do we need a separate type for unary ops? i just did this because the other type was called binop
-        deriving (Show, Eq)
-
-    data Expr
-      = BoolConst Bool  
-      | IntConst Int
-      | StrConst String
-      | FloatConst Float
-      | Id Ident        --Does Id Array Ident work?
-      | Binop Expr Expr
-      | Unop Expr 
-        deriving (Show, Eq)
-    
-    data Array a
-      = Index a | (Index, Index) a
-
-    data Decl 
-      = Decl Ident BaseType
-        deriving (Show, Eq)
-    
-    data Stmt 
-      = Assign Lvalue Expr
-      | Assign Lvalue Index Expr        --is it better as (Int, Int) or Int Int
-      | Assign Lvalue Index Index  Expr  --could replace with Array Expr? does this even work?
-      | Read Lvalue
-      | Read Lvalue Index       
-      | Read Lvalue Index Index
-      | Write Expr
-      | Call Ident [Expr]
-      | If Expr [Stmt] 
-      | IfElse Expr [Stmt] [Stmt]
-      | While Expr [Stmt]
-        deriving (Show, Eq)
-    
-    data GoatProgram
-      = Program [Decl] [Stmt]
-        deriving (Show, Eq)
-    
-    
+  
+  type Ident = String
+  
+  data ArraySize
+    = OneDimen Int
+    | Matrix Int Int 
+      deriving (Show, Eq)
+  
+  data ArrayIndex
+    = OneDimenIndex Expr
+    | MatrixIndex Expr Expr
+      deriving (Show, Eq)
+  
+  data BaseType
+    = BoolType | IntType | FloatType
+      deriving (Show, Eq)
+  
+  data Lvalue
+    = LId Ident
+    | LArray Ident ArrayIndex
+      deriving (Show, Eq)
+  
+  data Binop
+    = Op_or | Op_and | Op_add | Op_mul | Op_sub | Op_div | Op_eq |     
+      Op_ne | Op_gt | Op_gte | Op_lt | Op_lte
+      deriving (Show, Eq)
+  
+  data UnaryOp
+    = Op_uneg | Op_umin
+      deriving (Show, Eq)
+  
+  data Expr
+    = BoolConst Bool
+    | IntConst Int
+    | FloatConst Float
+    | StrConst String
+    | Id Ident
+    | Array Ident ArrayIndex
+    | BinExpr Binop Expr Expr
+    | UnaryExpr UnaryOp Expr
+      deriving (Show, Eq)
+  
+  data Decl
+    = BaseDecl Ident BaseType
+    | ArrayDecl Ident ArraySize BaseType
+      deriving (Show, Eq)
+  
+  data Stmt
+    = Assign Lvalue Expr
+    -- | Assign Lvalue ArrayIndex Expr
+    | Read Lvalue
+    -- | Read Lvalue ArrayIndex
+    | Write Expr
+    | Call Ident [Expr]
+    | If Expr [Stmt]
+    | IfElse Expr [Stmt] [Stmt]
+    | While Expr [Stmt]
+      deriving (Show, Eq)
+  
+  data Proc
+    = Proc Ident [Param] [Decl] [Stmt]
+      deriving (Show, Eq)
+  
+  data ParamType 
+    = Ref | Val
+      deriving (Show, Eq)
+  
+  data Param
+    = Param ParamType BaseType Ident
+      deriving (Show, Eq)
+  
+  data GoatProgram
+    = Program [Proc]
+      deriving (Show, Eq)

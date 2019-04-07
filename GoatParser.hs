@@ -432,9 +432,11 @@ formatProc (Proc id param decl stmt)
 formatParam :: [Param] -> String
 formatParam _ = ""
 
+--needs to be indented
 formatDecl :: [Decl] -> String
 formatDecl _ = ""
 
+--needs to be indented. if block and while block need extra indentation
 formatStmts :: [Stmt] -> String
 formatStmts _ = ""
         

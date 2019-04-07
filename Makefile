@@ -1,3 +1,6 @@
+GoatParser: GoatParser.hs GoatAST.hs
+	ghc GoatParser.hs
+
 KidParser: KidParser.hs KidAST.hs
 	ghc KidParser.hs
 

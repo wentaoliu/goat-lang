@@ -81,6 +81,7 @@ data GoatProgram
     deriving (Show, Eq)
 
 
+
 instance Show Binop where
     show Op_or  = "||"
     show Op_and = "&&"

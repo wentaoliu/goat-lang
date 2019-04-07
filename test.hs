@@ -19,3 +19,8 @@ checkArgs "Goat" _
 add :: Int -> Int -> Int -> Int
 add x y z = x+y+z
 
+arrayF :: [String] -> String
+arrayF [] = ""
+arrayF (x:xs) = x ++ arrayF xs
+
+

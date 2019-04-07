@@ -28,11 +28,13 @@ data Lvalue
 data Binop
     = Op_or | Op_and | Op_add | Op_mul | Op_sub | Op_div | Op_eq |     
     Op_ne | Op_gt | Op_gte | Op_lt | Op_lte
-    deriving (Show, Enum, Eq)
+    -- deriving (Show, Enum, Eq)
+    deriving (Enum, Eq)
 
 data UnaryOp
     = Op_uneg | Op_umin
-    deriving (Show, Enum, Eq)
+    -- deriving (Show, Enum, Eq)
+    deriving (Enum, Eq)
 
 data Expr
     = BoolConst Bool

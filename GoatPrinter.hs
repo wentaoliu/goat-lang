@@ -26,17 +26,30 @@ formatProgram (Program (proc:procs))
 --data Proc = Proc Ident [Param] [Decl] [Stmt]
 formatProc :: Proc -> String
 formatProc (Proc id param decl stmt) 
-    = "proc " ++ id ++ "(" ++ formatParam param ++ ")" 
+    = "proc " ++ id ++ " (" ++ formatParam param ++ ")" 
         ++ "\n" ++ formatDecl decl ++ "begin\n" ++ formatStmts stmt ++ "end" 
 
 --Param ParamType BaseType Ident
 formatParam :: [Param] -> String
-formatParam _
-    = ""
+--no params = no text
+formatParam [] = ""
+--the last param is printed without comma afterwards
+formatParam ((Param pType bType id):[]) 
+    = (intercalate " " [show pType, show bType, id])
+--non last param is paramtype, basetype and id separated by space, then comma into next param
+formatParam ((Param pType bType id): params)
+    = (intercalate " " [show pType, show bType, id]) ++ ", " ++ formatParam params
 
 --needs to be indented
+-- BaseDecl Ident BaseType | ArrayDecl Ident ArraySize BaseType
 formatDecl :: [Decl] -> String
-formatDecl _ = ""
+formatDecl [] = ""
+formatDecl ((BaseDecl id bType):decls) 
+    = (formatIndent indentStep) ++ (show bType) 
+        ++ " " ++ (id) ++ ";\n" ++ formatDecl decls
+formatDecl ((ArrayDecl id aSize bType):decls) 
+    = (formatIndent indentStep) ++ (show bType) 
+        ++ " " ++ (id) ++ (show aSize) ++ ";\n" ++ formatDecl decls
 
 --needs to be indented. if block and while block need extra indentation
 formatStmts :: [Stmt] -> String

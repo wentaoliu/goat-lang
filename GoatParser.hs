@@ -1,6 +1,7 @@
 module Main where
 
 import GoatAST
+import GoatPrinter
 import Data.Char
 import Data.List
 import Text.Parsec
@@ -408,35 +409,4 @@ checkArgs progname args
         }
 
 
-
-
-pretty :: GoatProgram -> String
-pretty ast = formatProgram ast
-
---data GoatProgram = Program [Proc]
-formatProgram :: GoatProgram -> String
-formatProgram (Program []) = ""
---rule 2: two consecutive procedures should be separated by a 
---single blank line => "\n\n". 
---this assumes formatProc does not put a new line onto the end of each proc
-formatProgram (Program (proc:procs)) 
-    = formatProc proc ++ "\n\n" ++ formatProgram (Program procs)
-
---data Proc = Proc Ident [Param] [Decl] [Stmt]
-formatProc :: Proc -> String
-formatProc (Proc id param decl stmt) 
-    = "proc " ++ id ++ "(" ++ formatParam param ++ ")" 
-        ++ "\n" ++ formatDecl decl ++ "begin\n" ++ formatStmts stmt ++ "end" 
-
-
-formatParam :: [Param] -> String
-formatParam _ = ""
-
---needs to be indented
-formatDecl :: [Decl] -> String
-formatDecl _ = ""
-
---needs to be indented. if block and while block need extra indentation
-formatStmts :: [Stmt] -> String
-formatStmts _ = ""
         

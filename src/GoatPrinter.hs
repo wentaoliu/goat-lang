@@ -68,7 +68,7 @@ formatStmtI i stmt = case stmt of
     Write expr -> (formatIndent i) ++
         "write " ++ (show expr) ++ ";\n"
     Call id exprs -> (formatIndent i) ++
-        "call " ++ (show id) ++  
+        "call " ++ id ++  
         "(" ++ (joinStrings ", " $ map show exprs) ++ ")\n"
     If expr stmts -> 
         (formatIndent i) ++ "if " ++ (show expr) ++ " then\n" ++

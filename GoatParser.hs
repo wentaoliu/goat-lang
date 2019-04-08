@@ -393,10 +393,10 @@ main
                             }
         }
 
-
+ 
 
 checkArgs :: String -> [String] -> IO ()
---need to conform filename is a .gt file
+--need to confirm filename is a .gt file
 checkArgs _ ["-p",filename]
     = return ()
 checkArgs progname [filename]

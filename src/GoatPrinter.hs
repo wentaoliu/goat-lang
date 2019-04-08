@@ -3,6 +3,14 @@ module GoatPrinter where
 import GoatAST
 import Data.List
 
+-------------------------------------------------------------------------
+--  Pretty printer for GoatAST data
+--  - This file only contains logic for organising lines with indentation
+--  - For formating elements within a line (expr, stmt, etc.), the logic
+--    is implemented in GoatAST.hs by instantiating Show for these types
+-------------------------------------------------------------------------
+
+
 pretty :: GoatProgram -> String
 pretty ast = formatProgram ast
 
@@ -79,13 +87,6 @@ formatStmtI i stmt = case stmt of
 
 
 
-                     
-
--- This function might be in the library already.
-joinStrings :: String -> [String] -> String
-joinStrings _ [] = ""
-joinStrings _ [x] = x
-joinStrings sep (x:y:ys) = x ++ sep ++ y ++ (joinStrings sep ys)
 
 
 

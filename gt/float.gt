@@ -1,0 +1,6 @@
+proc testfunction (val int x, val int y)
+    float c;
+    int d[5,5];
+begin
+    pi := 3.14;
+end

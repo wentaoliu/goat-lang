@@ -1,0 +1,24 @@
+proc test1(val int x, 
+ref float
+ y)
+float a[5];  bool b[3];
+    begin
+a[0]
+:= -2 + 3 * (4 / 2 )
++ x * y ;
+b[1+1] := 3 > 2 || 
+3 < 2 &&     true
+;
+call
+  testfunction (1+2, 
+1*2);
+end
+
+proc testfunction(val int x, val int y)
+float c; int d[5,
+5];
+begin
+read c;
+write 
+d[3,5];
+end

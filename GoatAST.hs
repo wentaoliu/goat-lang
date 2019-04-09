@@ -1,9 +1,8 @@
 module GoatAST where
-
+import Numeric
 -----------------------------------
 -- Specification of an AST for Goat
 -----------------------------------
-import Data.List
 
 type Ident = String
 
@@ -87,14 +86,17 @@ data GoatProgram
 -----------------------------------------------------------------
 
 instance Show Expr where
-    show (BoolConst b) = show b
+    show (BoolConst b)
+        | b == True = "true"    
+        | b == False = "false"
     show (IntConst i) = show i
-    show (FloatConst f) = show f
+    --showFFloat to print floats not as exponents 
+    show (FloatConst f) = showFFloat Nothing f ""
     show (StrConst s) = show s
     show (Id id) = id
     show (Array id aindex) = id ++ show aindex
     show (BinExpr b e1 e2) = 
-        intercalate " " [showWrap e1, show b, showWrap e2]
+        joinStrings " " [showWrap e1, show b, showWrap e2]
     show (UnaryExpr u e) = show u ++ show e
 
 -- Wrap operands of an expression with parentheses
@@ -110,7 +112,7 @@ instance Show Stmt where
     show (Write e) = "write " ++ show e
     show (Call id exprs) = 
         "call " ++ id ++ 
-        "(" ++ intercalate ", " (map show exprs) ++ ")"
+        "(" ++ joinStrings ", " (map show exprs) ++ ")"
     -- other cases should be handled by GoatPrinter.formatStmtI
     show _ = "<Stub for a (If|IfElse|While) block>"
 
@@ -154,3 +156,10 @@ instance Show ParamType where
     show Ref = "ref"
     show Val = "val"
 
+
+-- This function might be in the library already.
+joinStrings :: String -> [String] -> String
+joinStrings _ [] = ""
+joinStrings sep (x:xs) = case xs of 
+    []       -> x
+    (y:ys)   -> x ++ sep ++ joinStrings sep xs

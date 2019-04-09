@@ -186,7 +186,20 @@ pAsg
       semi
       return (Assign lvalue rvalue)
 
-pIfElse
+pIfOrElse
+  = do
+    try pIf <|> pIfElse
+
+pIf
+  = do
+    reserved "if"
+    exp <- pExp
+    reserved "then"
+    stmts <- many1 pStmt
+    reserved "fi"
+    return (If exp stmts)
+
+pIfElse 
   = do
     reserved "if"
     exp <- pExp
@@ -220,12 +233,14 @@ pExp, pIntConst, pFloatConst, pIdent, pString, pBool :: Parser Expr
 pExp = buildExpressionParser table pFac 
         <?> "expression"
 
-pFac = choice [parens pExp, pIntConst, pFloatConst, pIdent, pString, pBool]
+pFac = choice [parens pExp, (try pFloatConst <|> pIntConst), pIdent, pString, pBool]
 
 table = [ [ prefix "-" (UnaryExpr Op_umin) ]
         , [ binary "*" (BinExpr Op_mul), binary "/" (BinExpr Op_div) ] 
         , [ binary "+" (BinExpr Op_add), binary "-" (BinExpr Op_sub) ] 
-        , [ relation "=" (BinExpr Op_eq), relation "!=" (BinExpr Op_ne), relation "<" (BinExpr Op_lt), relation "<=" (BinExpr Op_lte), relation ">" (BinExpr Op_gt), relation ">=" (BinExpr Op_gte) ] 
+        , [ relation "=" (BinExpr Op_eq), relation "!=" (BinExpr Op_ne)
+          , relation "<" (BinExpr Op_lt), relation "<=" (BinExpr Op_lte)
+          , relation ">" (BinExpr Op_gt), relation ">=" (BinExpr Op_gte) ] 
         , [ prefix "!" (UnaryExpr Op_uneg) ]
         , [ binary "&&" (BinExpr Op_add) ]
         , [ binary "||" (BinExpr Op_or) ]
@@ -330,10 +345,10 @@ main
                             }
         }
 
--- runParser :: Parsec s u a -> u -> SourceName -> s -> Either ParseError a
+ 
 
 checkArgs :: String -> [String] -> IO ()
---need to conform filename is a .gt file
+--need to confirm filename is a .gt file
 checkArgs _ ["-p",filename]
     = return ()
 checkArgs progname [filename]
@@ -346,3 +361,4 @@ checkArgs progname args
         }
 
 
+        

@@ -1,7 +1,9 @@
 module Main where
 
 import GoatAST
+import GoatPrinter
 import Data.Char
+import Data.List
 import Text.Parsec
 import Text.Parsec.Language (emptyDef)
 import qualified Text.Parsec.Token as Q
@@ -189,9 +191,9 @@ pIfElse
     reserved "if"
     exp <- pExp
     reserved "then"
-    stmts1 <- many pStmt
+    stmts1 <- many1 pStmt
     optional (reserved "else")
-    stmts2 <- optionMaybe (many pStmt)
+    stmts2 <- optionMaybe (many1 pStmt)
     reserved "fi"
     case stmts2 of 
       Nothing -> return (If exp stmts1)
@@ -202,7 +204,7 @@ pWhile
     reserved "while"
     exp <- pExp
     reserved "do"
-    stmts <- many pStmt
+    stmts <- many1 pStmt
     reserved "od"
     return (While exp stmts)
   
@@ -213,12 +215,12 @@ pWhile
 --  are left-associative.
 -----------------------------------------------------------------
 
-pExp, pIntConst, pFloatConst, pIdent, pString, pBool :: Parser Expr
+pExp, pIntConst, pFloatConst, pIdent, pString, pBool:: Parser Expr
 
 pExp = buildExpressionParser table pFac 
         <?> "expression"
 
-pFac = choice [parens pExp, pIntConst, pFloatConst, pIdent, pString, pBool]
+pFac = choice [parens pExp, pNum, pIdent, pString, pBool]
 
 table = [ [ prefix "-" (UnaryExpr Op_umin) ]
         , [ binary "*" (BinExpr Op_mul), binary "/" (BinExpr Op_div) ] 
@@ -249,6 +251,12 @@ pBool
     <|>
     do { reserved "false"; return (BoolConst False) }
 
+pNum
+  = do
+      try pFloatConst <|> pIntConst
+      <?>
+      "num"
+    
 pIntConst
   = do
       n <- natural <?> ""
@@ -319,20 +327,28 @@ main
   = do { progname <- getProgName
         ; args <- getArgs
         ; checkArgs progname args
-        ; input <- readFile (head args)
+        ; input <- readFile (last args)
         ; let output = runParser pMain 0 "" input
         ; case output of
-            Right ast -> print ast
+            Right ast -> putStr $ pretty ast
             Left  err -> do { putStr "Parse error at "
                             ; print err
                             }
         }
 
+-- runParser :: Parsec s u a -> u -> SourceName -> s -> Either ParseError a
+
 checkArgs :: String -> [String] -> IO ()
-checkArgs _ [filename]
+--need to conform filename is a .gt file
+checkArgs _ ["-p",filename]
     = return ()
-checkArgs progname _
-    = do { putStrLn ("Usage: " ++ progname ++ " filename\n\n")
+checkArgs progname [filename]
+    = do { putStrLn (progname ++ "\n" ++ (concat [filename]) ++ "\nSorry, code cannot be generated yet\n")
         ; exitWith (ExitFailure 1)
         }
+checkArgs progname args
+    = do { putStrLn ((Data.List.intercalate " " args) ++ "\nUsage: " ++ progname ++ " filename\n\n")
+        ; exitWith (ExitFailure 1)
+        }
+
 

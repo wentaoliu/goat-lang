@@ -20,9 +20,5 @@ cabal.project.local
 cabal.project.local~
 .HTF/
 .ghc.environment.*
-<<<<<<< HEAD
-=======
-
->>>>>>> wentao
 KidParser
 GoatParser

@@ -233,7 +233,7 @@ pExp, pIntConst, pFloatConst, pIdent, pString, pBool :: Parser Expr
 pExp = buildExpressionParser table pFac 
         <?> "expression"
 
-pFac = choice [parens pExp, pIntConst, pFloatConst, pIdent, pString, pBool]
+pFac = choice [parens pExp, (try pFloatConst <|> pIntConst), pIdent, pString, pBool]
 
 table = [ [ prefix "-" (UnaryExpr Op_umin) ]
         , [ binary "*" (BinExpr Op_mul), binary "/" (BinExpr Op_div) ] 

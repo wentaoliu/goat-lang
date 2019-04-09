@@ -1,5 +1,5 @@
 module GoatAST where
-
+import Numeric
 -----------------------------------
 -- Specification of an AST for Goat
 -----------------------------------
@@ -90,7 +90,8 @@ instance Show Expr where
         | b == True = "true"    
         | b == False = "false"
     show (IntConst i) = show i
-    show (FloatConst f) = show f
+    --showFFloat to print floats not as exponents 
+    show (FloatConst f) = showFFloat Nothing f ""
     show (StrConst s) = show s
     show (Id id) = id
     show (Array id aindex) = id ++ show aindex

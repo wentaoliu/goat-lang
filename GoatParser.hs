@@ -7,6 +7,7 @@ import Data.List
 import Text.Parsec
 import Text.Parsec.Language (emptyDef)
 import qualified Text.Parsec.Token as Q
+import Text.Parsec.Expr
 import System.Environment
 import System.Exit
 
@@ -122,9 +123,13 @@ pArrayDecl
 
 pArraySize :: Parser ArraySize
 pArraySize
-  = do { x <- pInt; return (OneDimen x) }
-    <|>
-    do { x <- pInt; comma; y <- pInt; return (Matrix x y) }
+  = do 
+    x <- pInt
+    optional comma
+    y <- optionMaybe pInt
+    case y of 
+      Nothing -> return (OneDimen x)
+      Just i -> return (Matrix x i)
     
 pInt :: Parser Int
 pInt 
@@ -146,10 +151,10 @@ pBaseType
 --  read and write statements, and assignments.
 -----------------------------------------------------------------
 
-pStmt, pRead, pWrite, pAsg, pIfOrElse, pIf, pIfelse, pWhile, pCall :: Parser Stmt
+pStmt, pRead, pWrite, pAsg, pIfElse, pWhile, pCall :: Parser Stmt
 
 pStmt 
-  = choice [pRead, pWrite, pAsg, pIfOrElse, pWhile, pCall]
+  = choice [pRead, pWrite, pAsg, pIfElse, pWhile, pCall]
 
 pRead
   = do 
@@ -200,10 +205,12 @@ pIfelse
     exp <- pExp
     reserved "then"
     stmts1 <- many1 pStmt
-    reserved "else"
-    stmts2 <- many1 pStmt
+    optional (reserved "else")
+    stmts2 <- optionMaybe (many1 pStmt)
     reserved "fi"
-    return (IfElse exp stmts1 stmts2)
+    case stmts2 of 
+      Nothing -> return (If exp stmts1)
+      Just stmts -> return (IfElse exp stmts1 stmts)
 
 pWhile
   = do
@@ -221,13 +228,27 @@ pWhile
 --  are left-associative.
 -----------------------------------------------------------------
 
-pExp, pTerm, pFactor, pUminus, pIntConst, pFloatConst, pIdent, pString, pArray, pBool :: Parser Expr
+pExp, pIntConst, pFloatConst, pIdent, pString, pBool :: Parser Expr
 
-pExp 
-  = pString 
-    <|> (chainl1 pTerm (pAddOp <|> pSubOp <|> pGt <|> pGte <|> pLt <|> pLte <|> pEq <|> pNe))
-    <?>
-    "expression"
+pExp = buildExpressionParser table pFac 
+        <?> "expression"
+
+pFac = choice [parens pExp, pIntConst, pFloatConst, pIdent, pString, pBool]
+
+table = [ [ prefix "-" (UnaryExpr Op_umin) ]
+        , [ binary "*" (BinExpr Op_mul), binary "/" (BinExpr Op_div) ] 
+        , [ binary "+" (BinExpr Op_add), binary "-" (BinExpr Op_sub) ] 
+        , [ relation "=" (BinExpr Op_eq), relation "!=" (BinExpr Op_ne), relation "<" (BinExpr Op_lt), relation "<=" (BinExpr Op_lte), relation ">" (BinExpr Op_gt), relation ">=" (BinExpr Op_gte) ] 
+        , [ prefix "!" (UnaryExpr Op_uneg) ]
+        , [ binary "&&" (BinExpr Op_add) ]
+        , [ binary "||" (BinExpr Op_or) ]
+        ]
+
+prefix name fun = Prefix (do { reservedOp name; return fun })
+
+binary name op = Infix (do { reservedOp name; return op }) AssocLeft
+
+relation name rel = Infix (do { reservedOp name; return rel }) AssocNone
 
 pString 
   = do
@@ -242,74 +263,6 @@ pBool
   = do { reserved "true"; return (BoolConst True) }
     <|>
     do { reserved "false"; return (BoolConst False) }
-
-pAddOp, pSubOp, pMulOp, pDivOp, pGt, pGte, pLt, pLte, pEq, pNe :: Parser (Expr -> Expr -> Expr)
-
-pAddOp
-  = do 
-      reservedOp "+"
-      return (BinExpr Op_add)
-
-pSubOp
-  = do
-    reservedOp "-"
-    return (BinExpr Op_sub)
-
-pTerm 
-  = (chainl1 pFactor pMulOp <|> pDivOp)
-    <?>
-    "\"term\""
-
-pMulOp
-  = do 
-      reservedOp "*"
-      return (BinExpr Op_mul)
-
-pDivOp
-  = do
-    reservedOp "/"
-    return (BinExpr Op_div)
-
-pGt
-  = do
-    reservedOp ">"
-    return (BinExpr Op_gt)
-    
-pGte
-  = do
-    reservedOp ">="
-    return (BinExpr Op_gte)
-
-pLt 
-  = do 
-    reservedOp "<"
-    return (BinExpr Op_lt)
-    
-pLte
-  = do
-    reservedOp "<="
-    return (BinExpr Op_lte)
-
-pEq
-  = do
-    reservedOp "="
-    return (BinExpr Op_eq)
-
-pNe
-  = do 
-    reservedOp "!="
-    return (BinExpr Op_ne)
-
-pFactor
-  = choice [pUminus, parens pExp, pIntConst, pFloatConst, pIdent, pArray, pBool]
-    <?> 
-    "\"factor\""
-
-pUminus
-  = do 
-      reservedOp "-"
-      exp <- pFactor
-      return (UnaryExpr Op_umin exp)
 
 pIntConst
   = do
@@ -327,16 +280,11 @@ pFloatConst
 
 pIdent 
   = do
-      ident <- identifier
-      return (Id ident)
-    <?>
-    "identifier"
-
-pArray 
-  = do 
-      ident <- identifier
-      aindex <- squares pArrayIndex
-      return (Array ident aindex)
+    ident <- identifier 
+    aindex <- optionMaybe (squares pArrayIndex)
+    case aindex of
+      Nothing -> return (Id ident)  
+      Just i -> return (Array ident i)
 
 pLvalue :: Parser Lvalue
 pLvalue
@@ -361,9 +309,13 @@ pLarray
 
 pArrayIndex :: Parser ArrayIndex
 pArrayIndex
-  = do { x <- pExp; return (OneDimenIndex x) }
-    <|>
-    do { x <- pExp; comma; y <- pExp; return (MatrixIndex x y) }
+  = do 
+    x <- pExp
+    optional comma
+    y <- optionMaybe pExp
+    case y of 
+      Nothing -> return (OneDimenIndex x)
+      Just i -> return (MatrixIndex x i)
  
 -----------------------------------------------------------------
 -- main

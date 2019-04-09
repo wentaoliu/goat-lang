@@ -93,7 +93,7 @@ instance Show Expr where
     show (IntConst i) = show i
     --showFFloat to print floats not as exponents 
     show (FloatConst f) = showFFloat Nothing f ""
-    show (StrConst s) = show s
+    show (StrConst s) = "\"" ++ s ++ "\""
     show (Id id) = id
     show (Array id aindex) = id ++ show aindex
     show (BinExpr b e1 e2) = 
@@ -119,11 +119,13 @@ instance Show Stmt where
 
 instance Show ArraySize where
     show (OneDimen len) = "[" ++ show len ++ "]"
-    show (Matrix h w) = "[" ++ show h ++ "," ++ show w ++ "]"
+    show (Matrix h w) = "[" ++ show h ++ ", " ++ show w ++ "]"
+    -- bug fix: space after comma
 
 instance Show ArrayIndex where
     show (OneDimenIndex e) = "[" ++ show e ++ "]"
-    show (MatrixIndex e1 e2) = "[" ++ show e1 ++ "," ++ show e2 ++ "]"
+    show (MatrixIndex e1 e2) = "[" ++ show e1 ++ ", " ++ show e2 ++ "]"
+    -- bug fix: space after comma
 
 instance Show Lvalue where
     show (LId id) = id

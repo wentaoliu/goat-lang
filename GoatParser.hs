@@ -190,7 +190,7 @@ pIf
     reserved "if"
     exp <- pExp
     reserved "then"
-    stmts <- many pStmt
+    stmts <- many1 pStmt
     reserved "fi"
     return (If exp stmts)
 
@@ -199,9 +199,9 @@ pIfelse
     reserved "if"
     exp <- pExp
     reserved "then"
-    stmts1 <- many pStmt
+    stmts1 <- many1 pStmt
     reserved "else"
-    stmts2 <- many pStmt
+    stmts2 <- many1 pStmt
     reserved "fi"
     return (IfElse exp stmts1 stmts2)
 
@@ -210,7 +210,7 @@ pWhile
     reserved "while"
     exp <- pExp
     reserved "do"
-    stmts <- many pStmt
+    stmts <- many1 pStmt
     reserved "od"
     return (While exp stmts)
   
@@ -256,9 +256,7 @@ pSubOp
     return (BinExpr Op_sub)
 
 pTerm 
-  = (chainl1 pFactor pMulOp)
-    <|>
-    (chainl1 pFactor pDivOp)
+  = (chainl1 pFactor pMulOp <|> pDivOp)
     <?>
     "\"term\""
 

@@ -1,4 +1,4 @@
-GoatParser: GoatParser.hs GoatAST.hs GoatPrinter.hs
+GoatParser: GoatParser.hs GoatAST.hs GoatPrinter.hs KidParser
 	ghc GoatParser.hs
 
 KidParser: KidParser.hs KidAST.hs

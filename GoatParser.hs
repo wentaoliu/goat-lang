@@ -39,6 +39,7 @@ parens     = Q.parens lexer
 squares    = Q.squares lexer
 reserved   = Q.reserved lexer
 reservedOp = Q.reservedOp lexer
+naturalOrFloat = Q.naturalOrFloat lexer
 
 myReserved, myOpnames :: [String]
 
@@ -80,9 +81,9 @@ pProgParam
 
 pParamType :: Parser ParamType
 pParamType
-  = do { reserved "ref"; return Ref }
+  = do { reserved "val"; return Val }
     <|>
-    do { reserved "val"; return Val }
+    do { reserved "ref"; return Ref }
 -----------------------------------------------------------------
 --  pProgBody looks for a sequence of declarations followed by a
 --  sequence of statements.
@@ -100,26 +101,14 @@ pProgBody
 pDecl :: Parser Decl
 pDecl
   = do
-    try pBaseDecl <|>  pArrayDecl
-
-pBaseDecl :: Parser Decl
-pBaseDecl
-  = do
     basetype <- pBaseType
     ident <- identifier
+    size <- optionMaybe $ squares pArraySize
     whiteSpace
     semi
-    return (BaseDecl ident basetype)
-
-pArrayDecl :: Parser Decl
-pArrayDecl 
-  = do
-    basetype <- pBaseType
-    ident <- identifier
-    size <- squares pArraySize
-    whiteSpace
-    semi
-    return (ArrayDecl ident size basetype)
+    case size of 
+      Nothing -> return (BaseDecl ident basetype)
+      Just s -> return (ArrayDecl ident s basetype)
 
 pArraySize :: Parser ArraySize
 pArraySize
@@ -215,7 +204,7 @@ pWhile
 --  are left-associative.
 -----------------------------------------------------------------
 
-pExp, pIntConst, pFloatConst, pIdent, pString, pBool:: Parser Expr
+pExp, pNum, pIdent, pString, pBool :: Parser Expr
 
 pExp = buildExpressionParser table pFac 
         <?> "expression"
@@ -225,7 +214,9 @@ pFac = choice [parens pExp, pNum, pIdent, pString, pBool]
 table = [ [ prefix "-" (UnaryExpr Op_umin) ]
         , [ binary "*" (BinExpr Op_mul), binary "/" (BinExpr Op_div) ] 
         , [ binary "+" (BinExpr Op_add), binary "-" (BinExpr Op_sub) ] 
-        , [ relation "=" (BinExpr Op_eq), relation "!=" (BinExpr Op_ne), relation "<" (BinExpr Op_lt), relation "<=" (BinExpr Op_lte), relation ">" (BinExpr Op_gt), relation ">=" (BinExpr Op_gte) ] 
+        , [ relation "=" (BinExpr Op_eq), relation "!=" (BinExpr Op_ne)
+          , relation "<=" (BinExpr Op_lte), relation "<" (BinExpr Op_lt)
+          , relation ">=" (BinExpr Op_gte), relation ">" (BinExpr Op_gt) ] 
         , [ prefix "!" (UnaryExpr Op_uneg) ]
         , [ binary "&&" (BinExpr Op_add) ]
         , [ binary "||" (BinExpr Op_or) ]
@@ -253,23 +244,12 @@ pBool
 
 pNum
   = do
-      try pFloatConst <|> pIntConst
-      <?>
-      "num"
-    
-pIntConst
-  = do
-      n <- natural <?> ""
-      return (IntConst (fromInteger n :: Int))
+        n <- naturalOrFloat;
+        case n of 
+          Left i -> return (IntConst (fromInteger i :: Int))
+          Right f -> return (FloatConst (realToFrac f :: Float))
     <?>
     "number"
-
-pFloatConst
-  = do
-      n <- float <?> ""
-      return (FloatConst (realToFrac n :: Float))
-    <?>
-    "float"
 
 pIdent 
   = do
@@ -282,23 +262,13 @@ pIdent
 pLvalue :: Parser Lvalue
 pLvalue
   = do 
-    try pLarray <|> pLatom
+    ident <- identifier
+    aindex <- optionMaybe $ squares pArrayIndex
+    case aindex of 
+      Nothing -> return (LId ident)
+      Just i -> return (LArray ident i)
     <?>
     "lvalue"
-
-pLatom :: Parser Lvalue
-pLatom 
-  = do
-    ident <- identifier
-    return (LId ident)
-
-pLarray :: Parser Lvalue
-pLarray 
-  = do
-      ident <- identifier
-      aindex <- squares pArrayIndex
-      return (LArray ident aindex)
-  
 
 pArrayIndex :: Parser ArrayIndex
 pArrayIndex
@@ -336,10 +306,10 @@ main
                             }
         }
 
--- runParser :: Parsec s u a -> u -> SourceName -> s -> Either ParseError a
+ 
 
 checkArgs :: String -> [String] -> IO ()
---need to conform filename is a .gt file
+--need to confirm filename is a .gt file
 checkArgs _ ["-p",filename]
     = return ()
 checkArgs progname [filename]
@@ -352,3 +322,4 @@ checkArgs progname args
         }
 
 
+        

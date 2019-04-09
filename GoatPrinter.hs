@@ -16,18 +16,16 @@ pretty ast = formatProgram ast
 
 --data GoatProgram = Program [Proc]
 formatProgram :: GoatProgram -> String
-formatProgram (Program []) = ""
---rule 2: two consecutive procedures should be separated by a 
---single blank line => "\n\n". 
---this assumes formatProc does not put a new line onto the end of each proc
-formatProgram (Program (proc:procs)) 
-    = formatProc proc ++ "\n\n" ++ formatProgram (Program procs)
+formatProgram (Program procs) = intercalate "\n" (map formatProc procs)
+--two consecutive procedures should be separated by a single blank line. 
+--note that formatProc *puts a new line* onto the end of each proc.
+
 
 --data Proc = Proc Ident [Param] [Decl] [Stmt]
 formatProc :: Proc -> String
 formatProc (Proc id param decl stmt) 
     = "proc " ++ id ++ " (" ++ formatParam param ++ ")" 
-        ++ "\n" ++ formatDecl decl ++ "begin\n" ++ formatStmts stmt ++ "end" 
+        ++ "\n" ++ formatDecl decl ++ "begin\n" ++ formatStmts stmt ++ "end\n" 
 
 --Param ParamType BaseType Ident
 formatParam :: [Param] -> String
@@ -83,7 +81,8 @@ formatStmtI i stmt = case stmt of
         "write " ++ (show expr) ++ ";\n"
     Call id exprs -> (formatIndent i) ++
         "call " ++ id ++  
-        "(" ++ (intercalate ", " $ map show exprs) ++ ")\n"
+        "(" ++ (intercalate ", " $ map show exprs) ++ ");\n"
+        -- bug fix: add `;` at the end of call statement
     If expr stmts -> 
         (formatIndent i) ++ "if " ++ (show expr) ++ " then\n" ++
         formatStmtsI (furtherIndent i) stmts ++

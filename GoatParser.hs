@@ -186,19 +186,6 @@ pAsg
       semi
       return (Assign lvalue rvalue)
 
-pIfOrElse
-  = do
-    try pIf <|> pIfElse
-
-pIf
-  = do
-    reserved "if"
-    exp <- pExp
-    reserved "then"
-    stmts <- many1 pStmt
-    reserved "fi"
-    return (If exp stmts)
-
 pIfElse 
   = do
     reserved "if"

@@ -188,7 +188,7 @@ pAsg
 
 pIfOrElse
   = do
-    try pIf <|> pIfelse
+    try pIf <|> pIfElse
 
 pIf
   = do
@@ -199,7 +199,7 @@ pIf
     reserved "fi"
     return (If exp stmts)
 
-pIfelse 
+pIfElse 
   = do
     reserved "if"
     exp <- pExp

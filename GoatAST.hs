@@ -86,7 +86,9 @@ data GoatProgram
 -----------------------------------------------------------------
 
 instance Show Expr where
-    show (BoolConst b) = show b
+    show (BoolConst b) 
+        | b == True = "true"    
+        | b == False = "false"
     show (IntConst i) = show i
     show (FloatConst f) = show f
     show (StrConst s) = show s

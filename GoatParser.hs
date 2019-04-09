@@ -189,9 +189,9 @@ pIfElse
     reserved "if"
     exp <- pExp
     reserved "then"
-    stmts1 <- many pStmt
+    stmts1 <- many1 pStmt
     optional (reserved "else")
-    stmts2 <- optionMaybe (many pStmt)
+    stmts2 <- optionMaybe (many1 pStmt)
     reserved "fi"
     case stmts2 of 
       Nothing -> return (If exp stmts1)
@@ -202,7 +202,7 @@ pWhile
     reserved "while"
     exp <- pExp
     reserved "do"
-    stmts <- many pStmt
+    stmts <- many1 pStmt
     reserved "od"
     return (While exp stmts)
   

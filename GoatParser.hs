@@ -303,6 +303,7 @@ main
             Right ast -> putStr $ pretty ast
             Left  err -> do { putStr "Parse error at "
                             ; print err
+                            ; exitWith (ExitFailure 2)
                             }
         }
 

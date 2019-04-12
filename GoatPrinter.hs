@@ -1,3 +1,8 @@
+--  File     : GoatPrinter.hs
+--  Author   : Wentao Liu, Raymond Sun, Zeyu Huang, Yiqun Wang
+--  Origin   : Sun 7 Apr 2019
+--  Purpose  : Pretty printer for GoatAST data
+
 module GoatPrinter where
 
 import GoatAST

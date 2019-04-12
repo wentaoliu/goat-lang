@@ -1,3 +1,8 @@
+--  File     : GoatAST.hs
+--  Author   : Wentao Liu, Raymond Sun, Zeyu Huang, Yiqun Wang
+--  Origin   : Thu 4 Apr 2019
+--  Purpose  : Specification of an AST for Goat
+
 module GoatAST where
 import Numeric
 import Data.List

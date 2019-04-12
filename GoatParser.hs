@@ -1,3 +1,9 @@
+--  File     : GoatParser.hs
+--  Author   : Wentao Liu, Raymond Sun, Zeyu Huang, Yiqun Wang
+--  Origin   : Sat 6 Apr 2019
+--  Purpose  : Goat parser for creating the GoatAST data and 
+--             printing by GoatPrinter
+
 module Main where
 
 import GoatAST

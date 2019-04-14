@@ -1,8 +1,13 @@
-Goat Compiler
+# Goat Parser
 
-Currently a parser for Goat language 
-
-COMP90045 project | Zeyu, Yiqun, Wentao, Raymond
+Parser for the Goat language. Programming project for COMP90045. 
 
 
-Issue with newlines in strings
+## Authors
+
+Zeyu, Yiqun, Wentao, Raymond
+
+Skeleton code by Harald
+
+## Issues
+Newline in string vs newline character bug

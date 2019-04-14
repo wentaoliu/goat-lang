@@ -1,13 +1,13 @@
--------------------------------------------------------------------
--- GoatParser parses a Goat program 
--- Authors: Zeyu Huang, Yiqun Wang, Wentao Liu, Raymond Sun
--- Based on skeleton code provided by Harald Søndergaard
--- 
--- Converts a Goat program in text to an AST as specified in GoatAST.hs
--- Pretty prints the result into a "standard" goat program layout 
--- 
--- For more insight on how a Goat program syntax, check GoatAST.hs
--------------------------------------------------------------------
+{-
+File: GoatParser.hs
+Author: Wumpus-Killers (Wentao Liu, Raymond Sun, Zeyu Huang, Yiqun Wang)
+        - Based on skeleton code provided by Harald Søndergaard
+Origin: Thu 4 Apr 2019
+Purpose: Converts a Goat program (text) to an AST as specified in GoatAST.hs
+    - Pretty prints the result into a "standard" Goat program layout 
+    - For more insight into Goat program syntax, check GoatAST.hs
+-}
+
 module Main where
 
 import GoatAST
@@ -24,7 +24,53 @@ import System.Exit
 type Parser a
     = Parsec String Int a
 
--- Parsec helps us create scanner functions
+
+-----------------------------------------------------------------
+--    Main
+-----------------------------------------------------------------
+
+-- Represents a task that is desired of the GoatParser program
+data Task = Compile | PrettyPrint deriving(Eq, Show)
+
+-- Read the command line inputs and do the desired action
+-- Currently we can only parse and then pretty print the result
+main :: IO ()
+main
+  = do 
+        progname <- getProgName
+        args <- getArgs
+        task <- checkArgs progname args
+        if task == Compile then
+            do
+                putStrLn "Sorry, cannot generate code yet"
+                exitWith ExitSuccess
+        else 
+            do 
+                input <- readFile (last args)
+                let output = runParser pMain 0 "" input
+                case output of
+                    Right ast -> putStr $ GoatPrinter.formatProgram ast
+                    Left  err -> do { putStr "Parse error at "
+                                    ; print err
+                                    ; exitWith (ExitFailure 2)
+                                    }        
+
+-- Check the command line args to determine what the program should do
+checkArgs :: String -> [String] -> IO Task
+checkArgs _ ["-p",filename]
+    = return PrettyPrint 
+checkArgs _ [filename]
+    = return Compile
+checkArgs progname args
+    = do 
+        putStrLn ("\nUsage: " ++ progname ++ " filename\n\n")
+        exitWith (ExitFailure 1)
+
+
+
+-----------------------------------------------------------------
+--    Parsec scanner functions
+-----------------------------------------------------------------
 lexer :: Q.TokenParser Int
 lexer
     = Q.makeTokenParser
@@ -309,43 +355,4 @@ pArrayIndex
       Just i -> return (MatrixIndex x i)
  
 
------------------------------------------------------------------
---    Main
------------------------------------------------------------------
-
--- Represents a task that is desired of the GoatParser program
-data Task = Compile | PrettyPrint deriving(Eq, Show)
-
--- Currently the program can only parse and then pretty print code.
-main :: IO ()
-main
-  = do 
-        progname <- getProgName
-        args <- getArgs
-        task <- checkArgs progname args
-        if task == Compile then
-            do
-                putStrLn "Sorry, cannot generate code yet"
-                exitWith ExitSuccess
-        else 
-            do 
-                input <- readFile (last args)
-                let output = runParser pMain 0 "" input
-                case output of
-                    Right ast -> putStr $ GoatPrinter.formatProgram ast
-                    Left  err -> do { putStr "Parse error at "
-                                    ; print err
-                                    ; exitWith (ExitFailure 2)
-                                    }        
-
--- Check the command line args to determine what the program should do
-checkArgs :: String -> [String] -> IO Task
-checkArgs _ ["-p",filename]
-    = return PrettyPrint 
-checkArgs _ [filename]
-    = return Compile
-checkArgs progname args
-    = do 
-        putStrLn ("\nUsage: " ++ progname ++ " filename\n\n")
-        exitWith (ExitFailure 1)
 

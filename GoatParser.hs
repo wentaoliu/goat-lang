@@ -24,7 +24,7 @@ import System.Exit
 type Parser a
     = Parsec String Int a
 
--- Parsec provides some scanning functionality 
+-- Parsec helps us create scanner functions
 lexer :: Q.TokenParser Int
 lexer
     = Q.makeTokenParser
@@ -108,8 +108,11 @@ pPassType
 
 
 -----------------------------------------------------------------
---  Parsing the body of a goat program
+--  Parsing the body of a goat procedure
 -----------------------------------------------------------------
+
+-- The body is just everything other than the procedure id and header
+-- Contains variable declarations and statments.
 
 pProcBody :: Parser ([Decl],[Stmt])
 pProcBody

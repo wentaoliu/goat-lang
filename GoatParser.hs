@@ -238,13 +238,9 @@ pFac = choice [parens pExp, (try pFloatConst <|> pIntConst), pIdent, pString, pB
 table = [ [ prefix "-" (UnaryExpr Op_umin) ]
         , [ binary "*" (BinExpr Op_mul), binary "/" (BinExpr Op_div) ] 
         , [ binary "+" (BinExpr Op_add), binary "-" (BinExpr Op_sub) ] 
-<<<<<<< HEAD
-        , [ relation "=" (BinExpr Op_eq), relation "!=" (BinExpr Op_ne), relation "<" (BinExpr Op_lt), relation "<=" (BinExpr Op_lte), relation ">" (BinExpr Op_gt), relation ">=" (BinExpr Op_gte) ] 
-=======
         , [ relation "=" (BinExpr Op_eq), relation "!=" (BinExpr Op_ne)
           , relation "<" (BinExpr Op_lt), relation "<=" (BinExpr Op_lte)
           , relation ">" (BinExpr Op_gt), relation ">=" (BinExpr Op_gte) ] 
->>>>>>> master
         , [ prefix "!" (UnaryExpr Op_uneg) ]
         , [ binary "&&" (BinExpr Op_add) ]
         , [ binary "||" (BinExpr Op_or) ]

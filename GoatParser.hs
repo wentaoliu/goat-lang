@@ -32,8 +32,8 @@ lexer
       { Q.commentLine     = "#"
       , Q.nestedComments  = True
       , Q.identStart      = letter
-      , Q.opStart         = oneOf "+-*:"
-      , Q.opLetter        = oneOf "+-*:"
+      , Q.opStart         = oneOf "+-*/:|&<=>!"
+      , Q.opLetter        = oneOf "+-*/:|&<=>!"
       , Q.reservedNames   = myReserved
       , Q.reservedOpNames = myOpnames
       })
@@ -50,6 +50,7 @@ parens     = Q.parens lexer
 squares    = Q.squares lexer
 reserved   = Q.reserved lexer
 reservedOp = Q.reservedOp lexer
+naturalOrFloat = Q.naturalOrFloat lexer
 
 myReserved, myOpnames :: [String]
 
@@ -126,26 +127,14 @@ pProcBody
 pDecl :: Parser Decl
 pDecl
   = do
-    try pBaseDecl <|>  pArrayDecl
-
-pBaseDecl :: Parser Decl
-pBaseDecl
-  = do
     basetype <- pBaseType
     ident <- identifier
+    size <- optionMaybe $ squares pArraySize
     whiteSpace
     semi
-    return (BaseDecl ident basetype)
-
-pArrayDecl :: Parser Decl
-pArrayDecl 
-  = do
-    basetype <- pBaseType
-    ident <- identifier
-    size <- squares pArraySize
-    whiteSpace
-    semi
-    return (ArrayDecl ident size basetype)
+    case size of 
+      Nothing -> return (BaseDecl ident basetype)
+      Just s -> return (ArrayDecl ident s basetype)
 
 pArraySize :: Parser ArraySize
 pArraySize
@@ -238,18 +227,14 @@ pWhile
 --  Parsing expressions
 -----------------------------------------------------------------
 
-pExp, pIntConst, pFloatConst, pIdent, pString, pBool :: Parser Expr
+pExp, pNum, pIdent, pString, pBool :: Parser Expr
 
 --buildExpressionParser automatically builds a parser for expressions (duh)
 -- based on the table of operations (table) and any provided terms (pFac) 
 pExp = buildExpressionParser table pFac 
         <?> "expression"
 
--- We use try for the float & int parsers because the parser only knows 
--- which one to choose after encountering the decimal point or lack of it.
--- By then, the integer characters have already been consumed by one of the
--- parsers, which we may need to recover for the other parser.
-pFac = choice [parens pExp, (try pFloatConst <|> pIntConst), pIdent, pString, pBool]
+pFac = choice [parens pExp, pNum, pIdent, pString, pBool]
 
 table = [ [ prefix "-" (UnaryExpr Op_umin) ]
         , [ binary "*" (BinExpr Op_mul), binary "/" (BinExpr Op_div) ] 
@@ -282,19 +267,14 @@ pBool
     <|>
     do { reserved "false"; return (BoolConst False) }
 
-pIntConst
+pNum
   = do
-      n <- natural <?> ""
-      return (IntConst (fromInteger n :: Int))
+        n <- naturalOrFloat;
+        case n of 
+          Left i -> return (IntConst (fromInteger i :: Int))
+          Right f -> return (FloatConst (realToFrac f :: Float))
     <?>
     "number"
-
-pFloatConst
-  = do
-      n <- float <?> ""
-      return (FloatConst (realToFrac n :: Float))
-    <?>
-    "float"
 
 pIdent 
   = do
@@ -310,22 +290,13 @@ pIdent
 pVar :: Parser Var
 pVar
   = do 
-    try pVarray <|> pVatom
+    ident <- identifier
+    aindex <- optionMaybe $ squares pArrayIndex
+    case aindex of 
+      Nothing -> return (VId ident)
+      Just i -> return (VArray ident i)
     <?>
     "variable"
-
-pVatom :: Parser Var
-pVatom 
-  = do
-    ident <- identifier
-    return (VId ident)
-
-pVarray :: Parser Var
-pVarray 
-  = do
-      ident <- identifier
-      aindex <- squares pArrayIndex
-      return (VArray ident aindex)
 
 pArrayIndex :: Parser ArrayIndex
 pArrayIndex

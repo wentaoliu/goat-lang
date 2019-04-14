@@ -21,8 +21,8 @@ lexer
       { Q.commentLine     = "#"
       , Q.nestedComments  = True
       , Q.identStart      = letter
-      , Q.opStart         = oneOf "+-*:"
-      , Q.opLetter        = oneOf "+-*:"
+      , Q.opStart         = oneOf "+-*/:|&<=>!"
+      , Q.opLetter        = oneOf "+-*/:|&<=>!"
       , Q.reservedNames   = myReserved
       , Q.reservedOpNames = myOpnames
       })
@@ -303,6 +303,7 @@ main
             Right ast -> putStr $ pretty ast
             Left  err -> do { putStr "Parse error at "
                             ; print err
+                            ; exitWith (ExitFailure 2)
                             }
         }
 

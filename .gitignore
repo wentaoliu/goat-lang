@@ -23,3 +23,5 @@ cabal.project.local~
 KidParser
 GoatParser
 Goat
+./Kid
+./tests

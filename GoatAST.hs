@@ -119,11 +119,11 @@ instance Show Stmt where
 
 instance Show ArraySize where
     show (OneDimen len) = "[" ++ show len ++ "]"
-    show (Matrix h w) = "[" ++ show h ++ "," ++ show w ++ "]"
+    show (Matrix h w) = "[" ++ show h ++ ", " ++ show w ++ "]"
 
 instance Show ArrayIndex where
     show (OneDimenIndex e) = "[" ++ show e ++ "]"
-    show (MatrixIndex e1 e2) = "[" ++ show e1 ++ "," ++ show e2 ++ "]"
+    show (MatrixIndex e1 e2) = "[" ++ show e1 ++ ", " ++ show e2 ++ "]"
 
 instance Show Lvalue where
     show (LId id) = id

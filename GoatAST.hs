@@ -86,12 +86,13 @@ data GoatProgram
 -----------------------------------------------------------------
 
 instance Show Expr where
+    --in Goat programs boolean values are lower case
     show (BoolConst b) 
         | b == True = "true"    
         | b == False = "false"
-    show (IntConst i) = show i
     --showFFloat to print floats not as exponents 
     show (FloatConst f) = showFFloat Nothing f ""
+    show (IntConst i) = show i
     show (StrConst s) = show s
     show (Id id) = id
     show (Array id aindex) = id ++ show aindex
@@ -146,7 +147,6 @@ instance Show UnaryOp where
     show Op_uneg = "!"
     show Op_umin = "-"
                         
-
 instance Show BaseType where
     show BoolType = "bool"
     show IntType = "int"

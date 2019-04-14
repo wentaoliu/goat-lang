@@ -21,20 +21,19 @@ import Data.List
 pretty :: GoatProgram -> String
 pretty ast = formatProgram ast
 
---data GoatProgram = Program [Proc]
+--AST speciifies: GoatProgram = Program [Proc]
 formatProgram :: GoatProgram -> String
 formatProgram (Program procs) = intercalate "\n" (map formatProc procs)
---two consecutive procedures should be separated by a single blank line. 
 --note that formatProc *puts a new line* onto the end of each proc.
 
 
---data Proc = Proc Ident [Param] [Decl] [Stmt]
+--AST spec: data Proc = Proc Ident [Param] [Decl] [Stmt]
 formatProc :: Proc -> String
 formatProc (Proc id param decl stmt) 
     = "proc " ++ id ++ " (" ++ formatParam param ++ ")" 
         ++ "\n" ++ formatDecl decl ++ "begin\n" ++ formatStmts stmt ++ "end\n" 
 
---Param ParamType BaseType Ident
+--AST spec: Param ParamType BaseType Ident
 formatParam :: [Param] -> String
 --no params = no text
 formatParam [] = ""

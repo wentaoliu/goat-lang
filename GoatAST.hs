@@ -86,6 +86,7 @@ data GoatProgram
 -----------------------------------------------------------------
 
 instance Show Expr where
+<<<<<<< HEAD
     --in Goat programs boolean values are lower case
     show (BoolConst b) 
         | b == True = "true"    
@@ -93,6 +94,14 @@ instance Show Expr where
     --showFFloat to print floats not as exponents 
     show (FloatConst f) = showFFloat Nothing f ""
     show (IntConst i) = show i
+=======
+    show (BoolConst b)
+        | b == True = "true"    
+        | b == False = "false"
+    show (IntConst i) = show i
+    --showFFloat to print floats not as exponents 
+    show (FloatConst f) = showFFloat Nothing f ""
+>>>>>>> master
     show (StrConst s) = show s
     show (Id id) = id
     show (Array id aindex) = id ++ show aindex
@@ -119,11 +128,19 @@ instance Show Stmt where
 
 instance Show ArraySize where
     show (OneDimen len) = "[" ++ show len ++ "]"
+<<<<<<< HEAD
     show (Matrix h w) = "[" ++ show h ++ ", " ++ show w ++ "]"
 
 instance Show ArrayIndex where
     show (OneDimenIndex e) = "[" ++ show e ++ "]"
     show (MatrixIndex e1 e2) = "[" ++ show e1 ++ ", " ++ show e2 ++ "]"
+=======
+    show (Matrix h w) = "[" ++ show h ++ "," ++ show w ++ "]"
+
+instance Show ArrayIndex where
+    show (OneDimenIndex e) = "[" ++ show e ++ "]"
+    show (MatrixIndex e1 e2) = "[" ++ show e1 ++ "," ++ show e2 ++ "]"
+>>>>>>> master
 
 instance Show Lvalue where
     show (LId id) = id
@@ -147,6 +164,10 @@ instance Show UnaryOp where
     show Op_uneg = "!"
     show Op_umin = "-"
                         
+<<<<<<< HEAD
+=======
+
+>>>>>>> master
 instance Show BaseType where
     show BoolType = "bool"
     show IntType = "int"

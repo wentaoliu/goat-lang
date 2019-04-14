@@ -1,7 +1,6 @@
-GoatParser: GoatParser.hs GoatAST.hs GoatPrinter.hs
-	ghc GoatParser.hs
+Goat: GoatParser.hs GoatAST.hs GoatPrinter.hs
+	ghc -o Goat GoatParser.hs
 
 clean:
-	rm -f *.o *.hi
-	rm -f GoatParser 
+	rm -f Goat*.o Goat*.hi
 

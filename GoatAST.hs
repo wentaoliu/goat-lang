@@ -68,12 +68,12 @@ data Proc
     = Proc Ident [Param] [Decl] [Stmt]
     deriving (Show, Eq)
 
-data ParamType 
+data PassType 
     = Ref | Val
     deriving (Eq)
     
 data Param
-    = Param ParamType BaseType Ident
+    = Param PassType BaseType Ident
     deriving (Show, Eq)
 
 data GoatProgram
@@ -151,7 +151,7 @@ instance Show BaseType where
     show IntType = "int"
     show FloatType = "float"
 
-instance Show ParamType where
+instance Show PassType where
     show Ref = "ref"
     show Val = "val"
 

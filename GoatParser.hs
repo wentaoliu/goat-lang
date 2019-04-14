@@ -1,3 +1,11 @@
+-------------------------------------------------------------------
+-- GoatParser parses a Goat program 
+-- Authors: Zeyu Huang, Yiqun Wang, Wentao Liu, Raymond Sun
+-- Based on skeleton code provided by Harald Søndergaard
+-- 
+-- Parses a goat program according to the AST specified in GoatAST
+-- Pretty prints the result into a "standard" goat program layout 
+-------------------------------------------------------------------
 module Main where
 
 import GoatAST
@@ -49,45 +57,56 @@ myReserved
 myOpnames 
   = ["+", "-", "*", "/", ":=", "||", "&&", "!", "=", "!=", "<", "<=", ">", ">="]
 
+
 -----------------------------------------------------------------
---  pProg is the topmost parsing function. It looks for a program
---  header "proc main()", followed by the program body.
+--     Parsing the goat program
 -----------------------------------------------------------------
 
-pProg :: Parser Proc
-pProg
+-- pProc parses a function (aka process) in a goat program
+pProc :: Parser Proc
+pProc
   = do
       reserved "proc"
       ident <- identifier 
-      params <- parens pProgHeader 
-      (decls,stmts) <- pProgBody
+      params <- parens pProcHeader 
+      (decls,stmts) <- pProcBody
       return (Proc ident params decls stmts)
 
+-----------------------------------------------------------------
+--     Parsing the header of a goat program
+-----------------------------------------------------------------
 
-pProgHeader :: Parser [Param]
-pProgHeader
-  = sepBy pProgParam comma
+-- pProcHeader parses the function arguments (aka parameters)
+pProcHeader :: Parser [Param]
+pProcHeader
+  = sepBy pProcParam comma
 
-pProgParam :: Parser Param
-pProgParam
+-- pProcParam parses the individual parameters 
+pProcParam :: Parser Param
+pProcParam
   = do
-      paramtype <- pParamType
+      passType <- pPassType
       basetype <- pBaseType
       ident <- identifier
-      return (Param paramtype basetype ident)
+      return (Param passType basetype ident)
 
-pParamType :: Parser ParamType
-pParamType
+-- pPassype separates the parameters which are passed by reference or value
+pPassType :: Parser PassType
+pPassType
   = do { reserved "ref"; return Ref }
     <|>
     do { reserved "val"; return Val }
+
 -----------------------------------------------------------------
---  pProgBody looks for a sequence of declarations followed by a
---  sequence of statements.
+--  Parsing the body of a goat program
 -----------------------------------------------------------------
 
-pProgBody :: Parser ([Decl],[Stmt])
-pProgBody
+-- Body aka non header sections of the function
+
+-- Parse the body of the program
+-- Body consists of some variable declarations, then some statememts
+pProcBody :: Parser ([Decl],[Stmt])
+pProcBody
   = do
       decls <- many pDecl
       reserved "begin"
@@ -95,11 +114,14 @@ pProgBody
       reserved "end"
       return (decls,stmts)
 
+-- Parse a single declaration which can be declaring a 
+-- single var or an array 
 pDecl :: Parser Decl
 pDecl
   = do
     try pBaseDecl <|>  pArrayDecl
 
+-- Parse a single variable. Consists of the type (int/bool/float) and the identifier
 pBaseDecl :: Parser Decl
 pBaseDecl
   = do
@@ -109,6 +131,9 @@ pBaseDecl
     semi
     return (BaseDecl ident basetype)
 
+-- Parse an array declaration.
+-- Consists of the type, identifier and the characteristics of 
+-- the array (i.e one or two dimensions, size of each dimension)
 pArrayDecl :: Parser Decl
 pArrayDecl 
   = do
@@ -119,6 +144,7 @@ pArrayDecl
     semi
     return (ArrayDecl ident size basetype)
 
+-- Parses the array size and dimension
 pArraySize :: Parser ArraySize
 pArraySize
   = do 
@@ -128,14 +154,14 @@ pArraySize
     case y of 
       Nothing -> return (OneDimen x)
       Just i -> return (Matrix x i)
-    
+
 pInt :: Parser Int
 pInt 
   = do 
     n <- natural
     return (fromInteger n::Int)
   
-
+-- Parses a data type in goat. can be boolean, integer or floating point number.
 pBaseType :: Parser BaseType
 pBaseType
   = do { reserved "bool"; return BoolType }
@@ -145,29 +171,31 @@ pBaseType
     do { reserved "float"; return FloatType}
       
 -----------------------------------------------------------------
---  pStmt is the main parser for statements. It wants to recognise
---  read and write statements, and assignments.
+--  Parsing statements
 -----------------------------------------------------------------
 
 pStmt, pRead, pWrite, pAsg, pIfElse, pWhile, pCall :: Parser Stmt
-
+-- Statement can be either a 'read' statement, 'write' statement,
+-- assignment to a value, if statment, if .. else statement, while statement 
+--  or a 'call' statement
 pStmt 
   = choice [pRead, pWrite, pAsg, pIfElse, pWhile, pCall]
 
+-- read statment begins with a 'read' keyword and some value
 pRead
   = do 
       reserved "read"
       lvalue <- pLvalue
       semi
       return (Read lvalue)
-
+-- write stmt begins with a 'write' keyword and some value or a string
 pWrite
   = do 
       reserved "write"
       exp <- (pString <|> pExp)
       semi
       return (Write exp)
-
+-- call stmt begins with 'call' keyword and some procedure id and its arguments
 pCall
   = do
     reserved "call"
@@ -176,6 +204,7 @@ pCall
     semi
     return (Call ident exprlist)
 
+-- assignment stmt is a variable followed by the assignment symbol ':=' and the some expression
 pAsg
   = do
       lvalue <- pLvalue
@@ -184,19 +213,7 @@ pAsg
       semi
       return (Assign lvalue rvalue)
 
-pIfOrElse
-  = do
-    try pIf <|> pIfElse
-
-pIf
-  = do
-    reserved "if"
-    exp <- pExp
-    reserved "then"
-    stmts <- many1 pStmt
-    reserved "fi"
-    return (If exp stmts)
-
+-- Handles both (if..then) and (if..then..else stmts
 pIfElse 
   = do
     reserved "if"
@@ -221,9 +238,7 @@ pWhile
   
 
 -----------------------------------------------------------------
---  pExp is the main parser for expressions. It takes into account
---  the operator precedences and the fact that the binary operators
---  are left-associative.
+--  Parsing expressions
 -----------------------------------------------------------------
 
 pExp, pIntConst, pFloatConst, pIdent, pString, pBool :: Parser Expr
@@ -325,7 +340,7 @@ pMain :: Parser GoatProgram
 pMain
   = do
       whiteSpace
-      p <- many1 pProg
+      p <- many1 pProc
       eof
       return (Program p)
 
@@ -350,9 +365,8 @@ main
                                     ; exitWith (ExitFailure 2)
                                     }        
 
-
+-- Check the arguments to determine what the program should do
 checkArgs :: String -> [String] -> IO Task
---need to confirm filename is a .gt file
 checkArgs _ ["-p",filename]
     = return Pprint 
 checkArgs _ [filename]
@@ -362,4 +376,5 @@ checkArgs progname args
         putStrLn ("\nUsage: " ++ progname ++ " filename\n\n")
         exitWith (ExitFailure 1)
 
+-- Represents a command that is desired of the GoatParser program
 data Task = Compile | Pprint deriving(Eq, Show)

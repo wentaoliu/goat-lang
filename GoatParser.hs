@@ -65,7 +65,7 @@ myOpnames
 --    Parsing the goat program
 -----------------------------------------------------------------
 
--- Parses the entire goat program which consists of one or more procedures
+-- Parses the entire goat program which consists of one or more procedures 
 pMain :: Parser GoatProgram
 pMain
   = do
@@ -74,7 +74,6 @@ pMain
       eof
       return (Program p)
 
--- proc aka procedure
 pProc :: Parser Proc
 pProc
   = do
@@ -181,9 +180,9 @@ pStmt
 pRead
   = do 
       reserved "read"
-      lvalue <- pLvalue
+      var <- pVar
       semi
-      return (Read lvalue)
+      return (Read var)
 
 pWrite
   = do 
@@ -202,11 +201,11 @@ pCall
 
 pAsg
   = do
-      lvalue <- pLvalue
+      var <- pVar
       reservedOp ":="
       rvalue <- pExp
       semi
-      return (Assign lvalue rvalue)
+      return (Assign var rvalue)
 
 -- Handles both (if..then) and (if..then..else) stmts
 pIfElse 
@@ -238,9 +237,15 @@ pWhile
 
 pExp, pIntConst, pFloatConst, pIdent, pString, pBool :: Parser Expr
 
+--buildExpressionParser automatically builds a parser for expressions (duh)
+-- based on the table of operations (table) and any provided terms (pFac) 
 pExp = buildExpressionParser table pFac 
         <?> "expression"
 
+-- We use try for the float & int parsers because the parser only knows 
+-- which one to choose after encountering the decimal point or lack of it.
+-- By then, the integer characters have already been consumed by one of the
+-- parsers, which we may need to recover for the other parser.
 pFac = choice [parens pExp, (try pFloatConst <|> pIntConst), pIdent, pString, pBool]
 
 table = [ [ prefix "-" (UnaryExpr Op_umin) ]
@@ -296,25 +301,28 @@ pIdent
       Nothing -> return (Id ident)  
       Just i -> return (Array ident i)
 
-pLvalue :: Parser Lvalue
-pLvalue
+-----------------------------------------------------------------
+--  Parsing variables
+-----------------------------------------------------------------   
+pVar :: Parser Var
+pVar
   = do 
-    try pLarray <|> pLatom
+    try pVarray <|> pVatom
     <?>
-    "lvalue"
+    "variable"
 
-pLatom :: Parser Lvalue
-pLatom 
+pVatom :: Parser Var
+pVatom 
   = do
     ident <- identifier
-    return (LId ident)
+    return (VId ident)
 
-pLarray :: Parser Lvalue
-pLarray 
+pVarray :: Parser Var
+pVarray 
   = do
       ident <- identifier
       aindex <- squares pArrayIndex
-      return (LArray ident aindex)
+      return (VArray ident aindex)
 
 pArrayIndex :: Parser ArrayIndex
 pArrayIndex
@@ -331,6 +339,10 @@ pArrayIndex
 --    Main
 -----------------------------------------------------------------
 
+-- Represents a task that is desired of the GoatParser program
+data Task = Compile | PrettyPrint deriving(Eq, Show)
+
+-- Currently the program can only parse and then pretty print code.
 main :: IO ()
 main
   = do 
@@ -355,7 +367,7 @@ main
 -- Check the command line args to determine what the program should do
 checkArgs :: String -> [String] -> IO Task
 checkArgs _ ["-p",filename]
-    = return Pprint 
+    = return PrettyPrint 
 checkArgs _ [filename]
     = return Compile
 checkArgs progname args
@@ -363,5 +375,3 @@ checkArgs progname args
         putStrLn ("\nUsage: " ++ progname ++ " filename\n\n")
         exitWith (ExitFailure 1)
 
--- Represents a task that is desired of the GoatParser program
-data Task = Compile | Pprint deriving(Eq, Show)

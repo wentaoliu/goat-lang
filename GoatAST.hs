@@ -20,9 +20,9 @@ data BaseType
     = BoolType | IntType | FloatType
     deriving (Eq)
 
-data Lvalue
-    = LId Ident
-    | LArray Ident ArrayIndex
+data Var
+    = VId Ident
+    | VArray Ident ArrayIndex
     deriving (Eq)
 
 data Binop
@@ -53,10 +53,10 @@ data Decl
     deriving (Show, Eq)
 
 data Stmt
-    = Assign Lvalue Expr
-    -- | Assign Lvalue ArrayIndex Expr
-    | Read Lvalue
-    -- | Read Lvalue ArrayIndex
+    = Assign Var Expr
+    -- | Assign Var ArrayIndex Expr
+    | Read Var
+    -- | Read Var ArrayIndex
     | Write Expr
     | Call Ident [Expr]
     | If Expr [Stmt]
@@ -124,9 +124,9 @@ instance Show ArrayIndex where
     show (OneDimenIndex e) = "[" ++ show e ++ "]"
     show (MatrixIndex e1 e2) = "[" ++ show e1 ++ ", " ++ show e2 ++ "]"
 
-instance Show Lvalue where
-    show (LId id) = id
-    show (LArray id aindex) = id ++ show aindex
+instance Show Var where
+    show (VId id) = id
+    show (VArray id aindex) = id ++ show aindex
 
 instance Show Binop where
     show Op_or  = "||"

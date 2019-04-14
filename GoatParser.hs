@@ -3,8 +3,10 @@
 -- Authors: Zeyu Huang, Yiqun Wang, Wentao Liu, Raymond Sun
 -- Based on skeleton code provided by Harald Søndergaard
 -- 
--- Parses a goat program according to the AST specified in GoatAST
+-- Converts a Goat program in text to an AST as specified in GoatAST.hs
 -- Pretty prints the result into a "standard" goat program layout 
+-- 
+-- For more insight on how a Goat program syntax, check GoatAST.hs
 -------------------------------------------------------------------
 module Main where
 
@@ -22,6 +24,7 @@ import System.Exit
 type Parser a
     = Parsec String Int a
 
+-- Parsec provides some scanning functionality 
 lexer :: Q.TokenParser Int
 lexer
     = Q.makeTokenParser
@@ -59,10 +62,19 @@ myOpnames
 
 
 -----------------------------------------------------------------
---     Parsing the goat program
+--    Parsing the goat program
 -----------------------------------------------------------------
 
--- pProc parses a function (aka process) in a goat program
+-- Parses the entire goat program which consists of one or more procedures
+pMain :: Parser GoatProgram
+pMain
+  = do
+      whiteSpace
+      p <- many1 pProc
+      eof
+      return (Program p)
+
+-- proc aka procedure
 pProc :: Parser Proc
 pProc
   = do
@@ -72,16 +84,15 @@ pProc
       (decls,stmts) <- pProcBody
       return (Proc ident params decls stmts)
 
+
 -----------------------------------------------------------------
---     Parsing the header of a goat program
+--   Parsing the header of a goat procedure
 -----------------------------------------------------------------
 
--- pProcHeader parses the function arguments (aka parameters)
 pProcHeader :: Parser [Param]
 pProcHeader
   = sepBy pProcParam comma
 
--- pProcParam parses the individual parameters 
 pProcParam :: Parser Param
 pProcParam
   = do
@@ -90,21 +101,17 @@ pProcParam
       ident <- identifier
       return (Param passType basetype ident)
 
--- pPassype separates the parameters which are passed by reference or value
 pPassType :: Parser PassType
 pPassType
   = do { reserved "ref"; return Ref }
     <|>
     do { reserved "val"; return Val }
 
+
 -----------------------------------------------------------------
 --  Parsing the body of a goat program
 -----------------------------------------------------------------
 
--- Body aka non header sections of the function
-
--- Parse the body of the program
--- Body consists of some variable declarations, then some statememts
 pProcBody :: Parser ([Decl],[Stmt])
 pProcBody
   = do
@@ -114,14 +121,11 @@ pProcBody
       reserved "end"
       return (decls,stmts)
 
--- Parse a single declaration which can be declaring a 
--- single var or an array 
 pDecl :: Parser Decl
 pDecl
   = do
     try pBaseDecl <|>  pArrayDecl
 
--- Parse a single variable. Consists of the type (int/bool/float) and the identifier
 pBaseDecl :: Parser Decl
 pBaseDecl
   = do
@@ -131,9 +135,6 @@ pBaseDecl
     semi
     return (BaseDecl ident basetype)
 
--- Parse an array declaration.
--- Consists of the type, identifier and the characteristics of 
--- the array (i.e one or two dimensions, size of each dimension)
 pArrayDecl :: Parser Decl
 pArrayDecl 
   = do
@@ -144,7 +145,6 @@ pArrayDecl
     semi
     return (ArrayDecl ident size basetype)
 
--- Parses the array size and dimension
 pArraySize :: Parser ArraySize
 pArraySize
   = do 
@@ -161,7 +161,6 @@ pInt
     n <- natural
     return (fromInteger n::Int)
   
--- Parses a data type in goat. can be boolean, integer or floating point number.
 pBaseType :: Parser BaseType
 pBaseType
   = do { reserved "bool"; return BoolType }
@@ -175,27 +174,24 @@ pBaseType
 -----------------------------------------------------------------
 
 pStmt, pRead, pWrite, pAsg, pIfElse, pWhile, pCall :: Parser Stmt
--- Statement can be either a 'read' statement, 'write' statement,
--- assignment to a value, if statment, if .. else statement, while statement 
---  or a 'call' statement
+
 pStmt 
   = choice [pRead, pWrite, pAsg, pIfElse, pWhile, pCall]
 
--- read statment begins with a 'read' keyword and some value
 pRead
   = do 
       reserved "read"
       lvalue <- pLvalue
       semi
       return (Read lvalue)
--- write stmt begins with a 'write' keyword and some value or a string
+
 pWrite
   = do 
       reserved "write"
       exp <- (pString <|> pExp)
       semi
       return (Write exp)
--- call stmt begins with 'call' keyword and some procedure id and its arguments
+
 pCall
   = do
     reserved "call"
@@ -204,7 +200,6 @@ pCall
     semi
     return (Call ident exprlist)
 
--- assignment stmt is a variable followed by the assignment symbol ':=' and the some expression
 pAsg
   = do
       lvalue <- pLvalue
@@ -213,7 +208,7 @@ pAsg
       semi
       return (Assign lvalue rvalue)
 
--- Handles both (if..then) and (if..then..else stmts
+-- Handles both (if..then) and (if..then..else) stmts
 pIfElse 
   = do
     reserved "if"
@@ -320,7 +315,6 @@ pLarray
       ident <- identifier
       aindex <- squares pArrayIndex
       return (LArray ident aindex)
-  
 
 pArrayIndex :: Parser ArrayIndex
 pArrayIndex
@@ -332,17 +326,10 @@ pArrayIndex
       Nothing -> return (OneDimenIndex x)
       Just i -> return (MatrixIndex x i)
  
------------------------------------------------------------------
--- main
------------------------------------------------------------------
 
-pMain :: Parser GoatProgram
-pMain
-  = do
-      whiteSpace
-      p <- many1 pProc
-      eof
-      return (Program p)
+-----------------------------------------------------------------
+--    Main
+-----------------------------------------------------------------
 
 main :: IO ()
 main
@@ -365,7 +352,7 @@ main
                                     ; exitWith (ExitFailure 2)
                                     }        
 
--- Check the arguments to determine what the program should do
+-- Check the command line args to determine what the program should do
 checkArgs :: String -> [String] -> IO Task
 checkArgs _ ["-p",filename]
     = return Pprint 
@@ -376,5 +363,5 @@ checkArgs progname args
         putStrLn ("\nUsage: " ++ progname ++ " filename\n\n")
         exitWith (ExitFailure 1)
 
--- Represents a command that is desired of the GoatParser program
+-- Represents a task that is desired of the GoatParser program
 data Task = Compile | Pprint deriving(Eq, Show)

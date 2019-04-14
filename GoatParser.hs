@@ -58,9 +58,7 @@ pProg :: Parser Proc
 pProg
   = do
       reserved "proc"
-      -- reserved "main"
       ident <- identifier 
-      -- parens (return ())
       params <- parens pProgHeader 
       (decls,stmts) <- pProgBody
       return (Proc ident params decls stmts)
@@ -333,32 +331,35 @@ pMain
 
 main :: IO ()
 main
-  = do { progname <- getProgName
-        ; args <- getArgs
-        ; checkArgs progname args
-        ; input <- readFile (last args)
-        ; let output = runParser pMain 0 "" input
-        ; case output of
-            Right ast -> putStr $ pretty ast
-            Left  err -> do { putStr "Parse error at "
-                            ; print err
-                            }
-        }
+  = do 
+        progname <- getProgName
+        args <- getArgs
+        task <- checkArgs progname args
+        if task == Compile then
+            do
+                putStrLn "Sorry, cannot generate code yet"
+                exitWith ExitSuccess
+        else 
+            do 
+                input <- readFile (last args)
+                let output = runParser pMain 0 "" input
+                case output of
+                    Right ast -> putStr $ GoatPrinter.formatProgram ast
+                    Left  err -> do { putStr "Parse error at "
+                                    ; print err
+                                    ; exitWith (ExitFailure 2)
+                                    }        
 
- 
 
-checkArgs :: String -> [String] -> IO ()
+checkArgs :: String -> [String] -> IO Task
 --need to confirm filename is a .gt file
 checkArgs _ ["-p",filename]
-    = return ()
-checkArgs progname [filename]
-    = do { putStrLn (progname ++ "\n" ++ (concat [filename]) ++ "\nSorry, code cannot be generated yet\n")
-        ; exitWith (ExitFailure 1)
-        }
+    = return Pprint 
+checkArgs _ [filename]
+    = return Compile
 checkArgs progname args
-    = do { putStrLn ((Data.List.intercalate " " args) ++ "\nUsage: " ++ progname ++ " filename\n\n")
-        ; exitWith (ExitFailure 1)
-        }
+    = do 
+        putStrLn ("\nUsage: " ++ progname ++ " filename\n\n")
+        exitWith (ExitFailure 1)
 
-
-        
+data Task = Compile | Pprint deriving(Eq, Show)

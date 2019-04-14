@@ -11,9 +11,6 @@ import Data.List
 -------------------------------------------------------------------------
 
 
-pretty :: GoatProgram -> String
-pretty ast = formatProgram ast
-
 --data GoatProgram = Program [Proc]
 formatProgram :: GoatProgram -> String
 formatProgram (Program []) = ""

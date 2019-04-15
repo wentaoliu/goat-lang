@@ -237,8 +237,8 @@ pIfElse = do
     maybeElseStmts <- optionMaybe elseStmts
     reserved "fi"
     case maybeElseStmts of 
-      Nothing        -> return (If exp stmts)
-      Just elseStmts -> return (IfElse exp stmts elseStmts)
+        Nothing        -> return (If exp stmts)
+        Just elseStmts -> return (IfElse exp stmts elseStmts)
     where elseStmts = reserved "else" *> (many1 pStmt)
 
 pWhile = do
@@ -288,6 +288,7 @@ pString = do
                              && (x /= '\t') 
                              && (x /= '\n')))
     char '"'
+    whiteSpace
     return (StrConst str)
     <?>
     "string"

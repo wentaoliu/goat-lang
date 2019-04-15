@@ -21,7 +21,7 @@ import Data.List
 pretty :: GoatProgram -> String
 pretty ast = formatProgram ast
 
---AST speciifies: GoatProgram = Program [Proc]
+--AST specifies: GoatProgram = Program [Proc]
 formatProgram :: GoatProgram -> String
 formatProgram (Program procs) = intercalate "\n" (map formatProc procs)
 --note that formatProc *puts a new line* onto the end of each proc.

@@ -6,7 +6,7 @@ Origin: Thu 4 Apr 2019
 Purpose: Pretty printer for GoatAST data
     - This program deals with printing GoatAST objects across multiple lines:
       GoatProgram, Proc, [Decl], [Stmt], etc.
-    - For formating elements within a single line (expr, stmt, etc.), the
+    - For formating elements within a single line (Expr, Decl, etc.), the
       logic is implemented in GoatAST.hs by instantiating Show for these types
     - The consideration behind this design is that bigger AST objects needs
       to be indented properly based on its "context", which is not accessible

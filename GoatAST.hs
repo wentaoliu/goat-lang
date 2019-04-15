@@ -122,7 +122,8 @@ showWrap expr = case expr of
     BinExpr b e1 e2 -> "(" ++ show expr ++ ")"
     _ -> show expr
     
-
+-- Format (Assign|Read|Write|Call) statements which does not recursively
+-- contain other statements.
 instance Show Stmt where
     show (Assign lval e) = show lval ++ " := " ++ show e ++ ";\n"
     show (Read lval) = "read " ++ show lval ++ ";\n"

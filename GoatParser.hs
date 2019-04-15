@@ -186,8 +186,7 @@ pArraySize :: Parser ArraySize
 pArraySize
   = do 
     x <- pInt
-    optional comma
-    y <- optionMaybe pInt
+    y <- optionMaybe $ comma *> pInt
     case y of 
       Nothing -> return (OneDimen x)
       Just i -> return (Matrix x i)
@@ -252,12 +251,12 @@ pIfElse
     exp <- pExp
     reserved "then"
     stmts1 <- many1 pStmt
-    optional (reserved "else")
-    stmts2 <- optionMaybe (many1 pStmt)
+    stmts2 <- optionMaybe elseStmt
     reserved "fi"
     case stmts2 of 
       Nothing -> return (If exp stmts1)
       Just stmts -> return (IfElse exp stmts1 stmts)
+    where elseStmt = reserved "else" *> (many1 pStmt)
 
 pWhile
   = do
@@ -350,8 +349,7 @@ pArrayIndex :: Parser ArrayIndex
 pArrayIndex
   = do 
     x <- pExp
-    optional comma
-    y <- optionMaybe pExp
+    y <- optionMaybe $ comma *> pExp
     case y of 
       Nothing -> return (OneDimenIndex x)
       Just i -> return (MatrixIndex x i)

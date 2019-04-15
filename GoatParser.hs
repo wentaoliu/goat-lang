@@ -305,6 +305,7 @@ pString
                                 && (x /= '\t') 
                                 && (x /= '\n')))
       char '"'
+      whiteSpace
       return (StrConst str)
     <?>
     "string"

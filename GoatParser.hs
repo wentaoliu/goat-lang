@@ -93,6 +93,7 @@ squares         = Q.squares lexer
 reserved        = Q.reserved lexer
 reservedOp      = Q.reservedOp lexer
 naturalOrFloat  = Q.naturalOrFloat lexer
+stringLiteral   = Q.stringLiteral lexer
 
 myReserved, myOpnames :: [String]
 
@@ -283,11 +284,7 @@ binary name op = Infix (do { reservedOp name; return op }) AssocLeft
 relation name rel = Infix (do { reservedOp name; return rel }) AssocNone
 
 pString = do
-    char '"'
-    str <- many (satisfy (\x -> (x /= '"') 
-                             && (x /= '\t') 
-                             && (x /= '\n')))
-    char '"'
+    str <- stringLiteral
     return (StrConst str)
     <?>
     "string"

@@ -233,7 +233,7 @@ pCall
   = do
     reserved "call"
     ident <- identifier
-    exprlist <- parens (sepBy1 pExp comma)
+    exprlist <- parens (sepBy pExp comma)
     semi
     return (Call ident exprlist)
 

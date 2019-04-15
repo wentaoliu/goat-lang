@@ -35,36 +35,32 @@ data Task = Compile | PrettyPrint deriving(Eq, Show)
 -- Read the command line inputs and do the desired action
 -- Currently we can only parse and then pretty print the result
 main :: IO ()
-main
-  = do 
-        progname <- getProgName
-        args <- getArgs
-        task <- checkArgs progname args
-        if task == Compile then
-            do
-                putStrLn "Sorry, cannot generate code yet"
-                exitWith ExitSuccess
-        else 
-            do 
-                input <- readFile (last args)
-                let output = runParser pMain 0 "" input
-                case output of
-                    Right ast -> putStr $ GoatPrinter.formatProgram ast
-                    Left  err -> do { putStr "Parse error at "
-                                    ; print err
-                                    ; exitWith (ExitFailure 2)
-                                    }        
+main = do 
+    progname <- getProgName
+    args <- getArgs
+    task <- checkArgs progname args
+    if task == Compile then do
+        putStrLn "Sorry, cannot generate code yet"
+        exitWith ExitSuccess
+    else do 
+        input <- readFile (last args)
+        let output = runParser pMain 0 "" input
+        case output of
+            Right ast -> putStr $ GoatPrinter.formatProgram ast
+            Left  err -> do { putStr "Parse error at "
+                            ; print err
+                            ; exitWith (ExitFailure 2)
+                            }        
 
 -- Check the command line args to determine what the program should do
 checkArgs :: String -> [String] -> IO Task
-checkArgs _ ["-p",filename]
-    = return PrettyPrint 
-checkArgs _ [filename]
-    = return Compile
-checkArgs progname args
-    = do 
-        putStrLn ("\nUsage: " ++ progname ++ "[-p] filename\n\n")
-        exitWith (ExitFailure 1)
+checkArgs _ ["-p",filename] = 
+    return PrettyPrint 
+checkArgs _ [filename] =
+    return Compile
+checkArgs progname args = do 
+    putStrLn ("\nUsage: " ++ progname ++ "[-p] filename\n\n")
+    exitWith (ExitFailure 1)
 
 
 
@@ -72,40 +68,40 @@ checkArgs progname args
 --    Parsec scanner functions
 -----------------------------------------------------------------
 lexer :: Q.TokenParser Int
-lexer
-    = Q.makeTokenParser
-      (emptyDef
-      { Q.commentLine     = "#"
-      , Q.nestedComments  = True
-      , Q.identStart      = letter
-      , Q.opStart         = oneOf "+-*/:|&<=>!"
-      , Q.opLetter        = oneOf "+-*/:|&<=>!"
-      , Q.reservedNames   = myReserved
-      , Q.reservedOpNames = myOpnames
-      })
+lexer = 
+    Q.makeTokenParser
+        (emptyDef
+        { Q.commentLine     = "#"
+        , Q.nestedComments  = True
+        , Q.identStart      = letter
+        , Q.opStart         = oneOf "+-*/:|&<=>!"
+        , Q.opLetter        = oneOf "+-*/:|&<=>!"
+        , Q.reservedNames   = myReserved
+        , Q.reservedOpNames = myOpnames
+        })
 
-whiteSpace = Q.whiteSpace lexer
-lexeme     = Q.lexeme lexer
-natural    = Q.natural lexer
-float      = Q.float lexer
-identifier = Q.identifier lexer
-colon      = Q.colon lexer
-semi       = Q.semi lexer
-comma      = Q.comma lexer
-parens     = Q.parens lexer
-squares    = Q.squares lexer
-reserved   = Q.reserved lexer
-reservedOp = Q.reservedOp lexer
-naturalOrFloat = Q.naturalOrFloat lexer
+whiteSpace      = Q.whiteSpace lexer
+lexeme          = Q.lexeme lexer
+natural         = Q.natural lexer
+float           = Q.float lexer
+identifier      = Q.identifier lexer
+colon           = Q.colon lexer
+semi            = Q.semi lexer
+comma           = Q.comma lexer
+parens          = Q.parens lexer
+squares         = Q.squares lexer
+reserved        = Q.reserved lexer
+reservedOp      = Q.reservedOp lexer
+naturalOrFloat  = Q.naturalOrFloat lexer
 
 myReserved, myOpnames :: [String]
 
-myReserved
-  = ["begin", "bool", "call", "do", "else", "end", "false", "fi", "float", "if", 
-      "int", "od", "proc", "read", "ref", "then", "true", "val", "while", "write"]
+myReserved = 
+    ["begin", "bool", "call", "do", "else", "end", "false", "fi", "float", "if", 
+    "int", "od", "proc", "read", "ref", "then", "true", "val", "while", "write"]
       
-myOpnames 
-  = ["+", "-", "*", "/", ":=", "||", "&&", "!", "=", "!=", "<", "<=", ">", ">="]
+myOpnames = 
+    ["+", "-", "*", "/", ":=", "||", "&&", "!", "=", "!=", "<", "<=", ">", ">="]
 
 
 -----------------------------------------------------------------
@@ -114,21 +110,19 @@ myOpnames
 
 -- Parses the entire goat program which consists of one or more procedures 
 pMain :: Parser GoatProgram
-pMain
-  = do
-      whiteSpace
-      p <- many1 pProc
-      eof
-      return (Program p)
+pMain = do
+    whiteSpace
+    p <- many1 pProc
+    eof
+    return (Program p)
 
 pProc :: Parser Proc
-pProc
-  = do
-      reserved "proc"
-      ident <- identifier 
-      params <- parens pProcHeader 
-      (decls,stmts) <- pProcBody
-      return (Proc ident params decls stmts)
+pProc = do
+    reserved "proc"
+    ident <- identifier 
+    params <- parens pProcHeader 
+    (decls,stmts) <- pProcBody
+    return (Proc ident params decls stmts)
 
 
 -----------------------------------------------------------------
@@ -136,20 +130,19 @@ pProc
 -----------------------------------------------------------------
 
 pProcHeader :: Parser [Param]
-pProcHeader
-  = sepBy pProcParam comma
+pProcHeader = 
+    sepBy pProcParam comma
 
 pProcParam :: Parser Param
-pProcParam
-  = do
-      passType <- pPassType
-      basetype <- pBaseType
-      ident <- identifier
-      return (Param passType basetype ident)
+pProcParam = do
+    passType <- pPassType
+    basetype <- pBaseType
+    ident <- identifier
+    return (Param passType basetype ident)
 
 pPassType :: Parser PassType
-pPassType
-  = do { reserved "ref"; return Ref }
+pPassType =
+    do { reserved "ref"; return Ref }
     <|>
     do { reserved "val"; return Val }
 
@@ -162,44 +155,40 @@ pPassType
 -- Contains variable declarations and statments.
 
 pProcBody :: Parser ([Decl],[Stmt])
-pProcBody
-  = do
-      decls <- many pDecl
-      reserved "begin"
-      stmts <- many1 pStmt
-      reserved "end"
-      return (decls,stmts)
+pProcBody = do
+    decls <- many pDecl
+    reserved "begin"
+    stmts <- many1 pStmt
+    reserved "end"
+    return (decls,stmts)
 
 pDecl :: Parser Decl
-pDecl
-  = do
+pDecl = do
     basetype <- pBaseType
     ident <- identifier
-    size <- optionMaybe $ squares pArraySize
+    maybeSize <- optionMaybe $ squares pArraySize
     whiteSpace
     semi
-    case size of 
-      Nothing -> return (BaseDecl ident basetype)
-      Just s -> return (ArrayDecl ident s basetype)
+    case maybeSize of 
+        Nothing   -> return (BaseDecl ident basetype)
+        Just size -> return (ArrayDecl ident size basetype)
 
 pArraySize :: Parser ArraySize
-pArraySize
-  = do 
+pArraySize = do 
     x <- pInt
-    y <- optionMaybe $ comma *> pInt
-    case y of 
-      Nothing -> return (OneDimen x)
-      Just i -> return (Matrix x i)
+    maybeY <- optionMaybe $ comma *> pInt
+    case maybeY of 
+        Nothing -> return (OneDimen x)
+        Just y  -> return (Matrix x y)
 
 pInt :: Parser Int
-pInt 
-  = do 
+pInt = do 
     n <- natural
     return (fromInteger n::Int)
   
 pBaseType :: Parser BaseType
-pBaseType
-  = do { reserved "bool"; return BoolType }
+pBaseType = 
+    do { reserved "bool"; return BoolType }
     <|>
     do { reserved "int"; return IntType }
     <|>
@@ -211,55 +200,48 @@ pBaseType
 
 pStmt, pRead, pWrite, pAsg, pIfElse, pWhile, pCall :: Parser Stmt
 
-pStmt 
-  = choice [pRead, pWrite, pAsg, pIfElse, pWhile, pCall]
+pStmt = choice [pRead, pWrite, pAsg, pIfElse, pWhile, pCall]
 
-pRead
-  = do 
-      reserved "read"
-      var <- pVar
-      semi
-      return (Read var)
+pRead = do 
+    reserved "read"
+    var <- pVar
+    semi
+    return (Read var)
 
-pWrite
-  = do 
-      reserved "write"
-      exp <- (pString <|> pExp)
-      semi
-      return (Write exp)
+pWrite = do 
+    reserved "write"
+    exp <- (pString <|> pExp)
+    semi
+    return (Write exp)
 
-pCall
-  = do
+pCall = do
     reserved "call"
     ident <- identifier
     exprlist <- parens (sepBy pExp comma)
     semi
     return (Call ident exprlist)
 
-pAsg
-  = do
-      var <- pVar
-      reservedOp ":="
-      rvalue <- pExp
-      semi
-      return (Assign var rvalue)
+pAsg = do
+    var <- pVar
+    reservedOp ":="
+    rvalue <- pExp
+    semi
+    return (Assign var rvalue)
 
 -- Handles both (if..then) and (if..then..else) stmts
-pIfElse 
-  = do
+pIfElse = do
     reserved "if"
     exp <- pExp
     reserved "then"
-    stmts1 <- many1 pStmt
-    stmts2 <- optionMaybe elseStmt
+    stmts <- many1 pStmt
+    maybeElseStmts <- optionMaybe elseStmts
     reserved "fi"
-    case stmts2 of 
-      Nothing -> return (If exp stmts1)
-      Just stmts -> return (IfElse exp stmts1 stmts)
-    where elseStmt = reserved "else" *> (many1 pStmt)
+    case maybeElseStmts of 
+      Nothing        -> return (If exp stmts)
+      Just elseStmts -> return (IfElse exp stmts elseStmts)
+    where elseStmts = reserved "else" *> (many1 pStmt)
 
-pWhile
-  = do
+pWhile = do
     reserved "while"
     exp <- pExp
     reserved "do"
@@ -276,8 +258,10 @@ pExp, pNum, pIdent, pString, pBool :: Parser Expr
 
 --buildExpressionParser automatically builds a parser for expressions (duh)
 -- based on the table of operations (table) and any provided terms (pFac) 
-pExp = buildExpressionParser table pFac 
-        <?> "expression"
+pExp = 
+    buildExpressionParser table pFac 
+    <?> 
+    "expression"
 
 pFac = choice [parens pExp, pNum, pIdent, pString, pBool]
 
@@ -298,62 +282,56 @@ binary name op = Infix (do { reservedOp name; return op }) AssocLeft
 
 relation name rel = Infix (do { reservedOp name; return rel }) AssocNone
 
-pString 
-  = do
-      char '"'
-      str <- many (satisfy (\x -> (x /= '"') 
-                                && (x /= '\t') 
-                                && (x /= '\n')))
-      char '"'
-      whiteSpace
-      return (StrConst str)
+pString = do
+    char '"'
+    str <- many (satisfy (\x -> (x /= '"') 
+                             && (x /= '\t') 
+                             && (x /= '\n')))
+    char '"'
+    return (StrConst str)
     <?>
     "string"
 
-pBool
-  = do { reserved "true"; return (BoolConst True) }
+pBool = 
+    do { reserved "true"; return (BoolConst True) }
     <|>
     do { reserved "false"; return (BoolConst False) }
 
-pNum
-  = do
-        n <- naturalOrFloat;
-        case n of 
-          Left i -> return (IntConst (fromInteger i :: Int))
-          Right f -> return (FloatConst (realToFrac f :: Float))
+pNum = do
+    iOrF <- naturalOrFloat;
+    case iOrF of 
+        Left i  -> return (IntConst (fromInteger i :: Int))
+        Right f -> return (FloatConst (realToFrac f :: Float))
     <?>
     "number"
 
-pIdent 
-  = do
+pIdent = do
     ident <- identifier 
-    aindex <- optionMaybe (squares pArrayIndex)
-    case aindex of
-      Nothing -> return (Id ident)  
-      Just i -> return (Array ident i)
+    maybeIndex <- optionMaybe $ squares pArrayIndex
+    case maybeIndex of
+        Nothing    -> return (Id ident)  
+        Just index -> return (Array ident index)
 
 -----------------------------------------------------------------
 --  Parsing variables
 -----------------------------------------------------------------   
 pVar :: Parser Var
-pVar
-  = do 
+pVar = do 
     ident <- identifier
-    aindex <- optionMaybe $ squares pArrayIndex
-    case aindex of 
-      Nothing -> return (VId ident)
-      Just i -> return (VArray ident i)
+    maybeIndex <- optionMaybe $ squares pArrayIndex
+    case maybeIndex of 
+        Nothing    -> return (VId ident)
+        Just index -> return (VArray ident index)
     <?>
     "variable"
 
 pArrayIndex :: Parser ArrayIndex
-pArrayIndex
-  = do 
+pArrayIndex = do 
     x <- pExp
-    y <- optionMaybe $ comma *> pExp
-    case y of 
-      Nothing -> return (OneDimenIndex x)
-      Just i -> return (MatrixIndex x i)
+    maybeY <- optionMaybe $ comma *> pExp
+    case maybeY of 
+        Nothing -> return (OneDimenIndex x)
+        Just y  -> return (MatrixIndex x y)
  
 
 

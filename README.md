@@ -10,4 +10,3 @@ Zeyu, Yiqun, Wentao, Raymond
 Skeleton code by Harald
 
 ## Issues
-Newline in string vs newline character bug

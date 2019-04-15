@@ -302,7 +302,9 @@ relation name rel = Infix (do { reservedOp name; return rel }) AssocNone
 pString 
   = do
       char '"'
-      str <- many (satisfy (/= '"'))
+      str <- many (satisfy (\x -> (x /= '"') 
+                                && (x /= '\t') 
+                                && (x /= '\n')))
       char '"'
       return (StrConst str)
     <?>

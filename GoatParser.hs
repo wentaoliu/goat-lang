@@ -1,7 +1,6 @@
 {-
 File: GoatParser.hs
-Author: Wumpus-Killers (Wentao Liu, Raymond Sun, Zeyu Huang, Yiqun Wang)
-        - Based on skeleton code provided by Harald Søndergaard
+Author: (Based on skeleton code provided by Harald Søndergaard)
 Origin: Thu 4 Apr 2019
 Purpose: Converts a Goat program (text) to an AST as specified in GoatAST.hs
     - Pretty prints the result into a "standard" Goat program layout 

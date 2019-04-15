@@ -1,7 +1,6 @@
 
 {-
 File: GoatPrinter.hs
-Author: Wumpus-Killers (Wentao Liu, Raymond Sun, Zeyu Huang, Yiqun Wang)
 Origin: Thu 4 Apr 2019
 Purpose: Pretty printer for GoatAST data
     - This program deals with printing GoatAST objects across multiple lines:

@@ -1,6 +1,5 @@
 {-
 File: GoatAST.hs
-Author: Wumpus-Killers (Wentao Liu, Raymond Sun, Zeyu Huang, Yiqun Wang)
 Origin: Thu 4 Apr 2019
 Purpose: Data structure of an AST for Goat
     - This program defines the data types for a Goat AST.

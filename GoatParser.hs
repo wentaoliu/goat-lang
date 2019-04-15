@@ -63,7 +63,7 @@ checkArgs _ [filename]
     = return Compile
 checkArgs progname args
     = do 
-        putStrLn ("\nUsage: " ++ progname ++ " filename\n\n")
+        putStrLn ("\nUsage: " ++ progname ++ "[-p] filename\n\n")
         exitWith (ExitFailure 1)
 
 

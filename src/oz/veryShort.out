@@ -1,0 +1,7 @@
+string_const r0, "main:\n"
+call_builtin print_string
+string_const r0, "<unsupported statement;>\n"
+call_builtin print_string
+string_const r0, "a\n"
+call_builtin print_string
+halt

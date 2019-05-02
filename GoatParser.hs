@@ -272,7 +272,7 @@ table = [ [ prefix "-" (UnaryExpr Op_umin) ]
           , relation "<" (BinExpr Op_lt), relation "<=" (BinExpr Op_lte)
           , relation ">" (BinExpr Op_gt), relation ">=" (BinExpr Op_gte) ] 
         , [ prefix "!" (UnaryExpr Op_uneg) ]
-        , [ binary "&&" (BinExpr Op_add) ]
+        , [ binary "&&" (BinExpr Op_and) ]
         , [ binary "||" (BinExpr Op_or) ]
         ]
 

@@ -1,0 +1,11 @@
+proc q ()
+
+begin
+# a := -2 + 3 * (4 / 2 )+ x * y ;
+# x := -2 + 3 * 4;
+# c := 3 + true;
+y := true || false;
+d := 3 > 2 || 2 < 1;
+b := 3 > 2 || true;
+
+end

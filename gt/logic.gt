@@ -1,0 +1,9 @@
+proc main ()
+
+begin
+b := (false || (false || true)) && (((true && false) && true));
+c := b && c ;
+
+a := !true || (false && true);
+
+end

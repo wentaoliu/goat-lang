@@ -1,0 +1,24 @@
+proc main()
+
+int i; float f;
+
+begin
+
+# String literals crossing multiple lines is not valid.
+# s1 := "firstLine
+# secondLine
+# end";
+
+# String literals cannot contain '"'
+# s1 := "\"";
+
+# String literals can have redundant spaces before the semicolon.
+s1 := "something"  ;
+write "something"  ;
+
+# String literals can contain "\n"
+s2 := "\n";
+s3 := "\\n";
+s4 := "\t\r";
+
+end

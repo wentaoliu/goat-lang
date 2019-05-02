@@ -36,22 +36,20 @@ data BaseType
     = BoolType | IntType | FloatType
     deriving (Eq)
 
-data Lvalue
-    = LId Ident
-    | LArray Ident ArrayIndex
+data Var
+    = VId Ident
+    | VArray Ident ArrayIndex
     deriving (Eq)
 
 -- Binary operators
 data Binop
     = Op_or | Op_and | Op_add | Op_mul | Op_sub | Op_div | Op_eq |     
     Op_ne | Op_gt | Op_gte | Op_lt | Op_lte
-    -- deriving (Show, Enum, Eq)
     deriving (Enum, Eq)
 
 -- Unary operators
 data UnaryOp
     = Op_uneg | Op_umin
-    -- deriving (Show, Enum, Eq)
     deriving (Enum, Eq)
 
 data Expr
@@ -71,8 +69,8 @@ data Decl
     deriving (Show, Eq)
 
 data Stmt
-    = Assign Lvalue Expr
-    | Read Lvalue
+    = Assign Var Expr
+    | Read Var
     | Write Expr
     | Call Ident [Expr]
     | If Expr [Stmt]
@@ -84,12 +82,12 @@ data Proc
     = Proc Ident [Param] [Decl] [Stmt]
     deriving (Show, Eq)
 
-data ParamType 
+data PassType 
     = Ref | Val
     deriving (Eq)
     
 data Param
-    = Param ParamType BaseType Ident
+    = Param PassType BaseType Ident
     deriving (Show, Eq)
 
 data GoatProgram
@@ -124,7 +122,8 @@ showWrap expr = case expr of
     BinExpr b e1 e2 -> "(" ++ show expr ++ ")"
     _ -> show expr
     
-
+-- Format (Assign|Read|Write|Call) statements which does not recursively
+-- contain other statements.
 instance Show Stmt where
     show (Assign lval e) = show lval ++ " := " ++ show e ++ ";\n"
     show (Read lval) = "read " ++ show lval ++ ";\n"
@@ -139,16 +138,14 @@ instance Show Stmt where
 instance Show ArraySize where
     show (OneDimen len) = "[" ++ show len ++ "]"
     show (Matrix h w) = "[" ++ show h ++ ", " ++ show w ++ "]"
-    -- bug fix: space after comma
 
 instance Show ArrayIndex where
     show (OneDimenIndex e) = "[" ++ show e ++ "]"
     show (MatrixIndex e1 e2) = "[" ++ show e1 ++ ", " ++ show e2 ++ "]"
-    -- bug fix: space after comma
 
-instance Show Lvalue where
-    show (LId id) = id
-    show (LArray id aindex) = id ++ show aindex
+instance Show Var where
+    show (VId id) = id
+    show (VArray id aindex) = id ++ show aindex
 
 instance Show Binop where
     show Op_or  = "||"
@@ -173,6 +170,6 @@ instance Show BaseType where
     show IntType = "int"
     show FloatType = "float"
 
-instance Show ParamType where
+instance Show PassType where
     show Ref = "ref"
     show Val = "val"

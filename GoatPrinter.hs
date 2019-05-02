@@ -6,7 +6,7 @@ Origin: Thu 4 Apr 2019
 Purpose: Pretty printer for GoatAST data
     - This program deals with printing GoatAST objects across multiple lines:
       GoatProgram, Proc, [Decl], [Stmt], etc.
-    - For formating elements within a single line (expr, stmt, etc.), the
+    - For formating elements within a single line (Expr, Decl, etc.), the
       logic is implemented in GoatAST.hs by instantiating Show for these types
     - The consideration behind this design is that bigger AST objects needs
       to be indented properly based on its "context", which is not accessible
@@ -21,29 +21,30 @@ import Data.List
 pretty :: GoatProgram -> String
 pretty ast = formatProgram ast
 
---data GoatProgram = Program [Proc]
+--AST specifies: GoatProgram = Program [Proc]
 formatProgram :: GoatProgram -> String
 formatProgram (Program procs) = intercalate "\n" (map formatProc procs)
---two consecutive procedures should be separated by a single blank line. 
 --note that formatProc *puts a new line* onto the end of each proc.
 
 
---data Proc = Proc Ident [Param] [Decl] [Stmt]
+--AST spec: data Proc = Proc Ident [Param] [Decl] [Stmt]
 formatProc :: Proc -> String
 formatProc (Proc id param decl stmt) 
     = "proc " ++ id ++ " (" ++ formatParam param ++ ")" 
         ++ "\n" ++ formatDecl decl ++ "begin\n" ++ formatStmts stmt ++ "end\n" 
 
---Param ParamType BaseType Ident
+--AST spec: Param ParamType BaseType Ident
 formatParam :: [Param] -> String
 --no params = no text
 formatParam [] = ""
 --the last param is printed without comma afterwards
 formatParam ((Param pType bType id):[]) 
     = (intercalate " " [show pType, show bType, id])
---non last param is paramtype, basetype and id separated by space, then comma into next param
+--non last param is paramtype, basetype and id separated by space, 
+--then comma into next param
 formatParam ((Param pType bType id): params)
-    = (intercalate " " [show pType, show bType, id]) ++ ", " ++ formatParam params
+    = (intercalate " " [show pType, show bType, id]) ++ ", " 
+        ++ formatParam params
 
 -- A set of functions for formatting indentation
 data Indent = BySpace Int 

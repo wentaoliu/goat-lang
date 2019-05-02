@@ -8,7 +8,7 @@ Purpose: Converts a Goat program (text) to an AST as specified in GoatAST.hs
     - For more insight into Goat program syntax, check GoatAST.hs
 -}
 
-module Main where
+module GoatParser where
 
 import GoatAST
 import GoatPrinter
@@ -34,8 +34,8 @@ data Task = Compile | PrettyPrint deriving(Eq, Show)
 
 -- Read the command line inputs and do the desired action
 -- Currently we can only parse and then pretty print the result
-main :: IO ()
-main = do 
+exportedMain :: IO ()
+exportedMain = do 
     progname <- getProgName
     args <- getArgs
     task <- checkArgs progname args

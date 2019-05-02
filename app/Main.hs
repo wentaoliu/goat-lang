@@ -1,6 +1,9 @@
 module Main where
 
-import Lib
+-- Goat project
+import GoatAST
+import GoatParser
+import GoatPrinter
 
 main :: IO ()
-main = someFunc
+main = GoatParser.exportedMain

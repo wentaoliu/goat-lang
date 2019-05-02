@@ -7,7 +7,7 @@ maintainer:          "example@example.com"
 copyright:           "2019 Author name here"
 
 extra-source-files:
-- README.txt
+# - README.txt
 - ChangeLog.md
 
 # Metadata used when publishing your package
@@ -21,13 +21,13 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
-- alex >= 3.2
+- parsec
 
 library:
-  source-dirs: src
+  source-dirs: src/Goat
 
 executables:
-  goat-lang-exe:
+  goat-exe:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -38,7 +38,7 @@ executables:
     - goat-lang
 
 tests:
-  goat-lang-test:
+  goat-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:

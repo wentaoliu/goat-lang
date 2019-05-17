@@ -7,7 +7,7 @@ maintainer:          "example@example.com"
 copyright:           "2019 Author name here"
 
 extra-source-files:
-# - README.txt
+- README.md
 - ChangeLog.md
 
 # Metadata used when publishing your package
@@ -22,6 +22,7 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
 - base >= 4.7 && < 5
 - parsec
+- MissingH
 
 library:
   source-dirs: src/Goat

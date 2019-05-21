@@ -27,3 +27,4 @@ Kid/
 tests/
 .gitignore
 resources/
+gto.hs

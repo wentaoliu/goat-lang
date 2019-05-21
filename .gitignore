@@ -26,4 +26,4 @@ Goat
 ./Kid
 ./tests
 .gitignore
-.resources/
+./resources

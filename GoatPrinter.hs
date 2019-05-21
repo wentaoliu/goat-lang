@@ -40,9 +40,11 @@ formatParam [] = ""
 --the last param is printed without comma afterwards
 formatParam ((Param pType bType id):[]) 
     = (intercalate " " [show pType, show bType, id])
---non last param is paramtype, basetype and id separated by space, then comma into next param
+--non last param is paramtype, basetype and id separated by space, 
+--then comma into next param
 formatParam ((Param pType bType id): params)
-    = (intercalate " " [show pType, show bType, id]) ++ ", " ++ formatParam params
+    = (intercalate " " [show pType, show bType, id]) ++ ", " 
+        ++ formatParam params
 
 -- A set of functions for formatting indentation
 data Indent = BySpace Int 

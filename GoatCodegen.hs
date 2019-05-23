@@ -363,14 +363,44 @@ cgGetBaseType BaseType bt = bt
 cgGetBaseType Array bt num = bt
 cgGetBaseType Matrix  bt num1 num2 = bt
 
-cgVariableAccess :: Lvalue -> CodeGen (BaseType, Int)
+--returns the reference type, data type of the variable and stacknum to load it from. 
+--jack9966 wrapped refType and stacknum together in 'data VarAddress' but i didnt
+cgVariableAccess :: Lvalue -> (Bool, BaseType, Int)
 cgGetVariableType LId pos id = do
     (isReference, goatType, slot) <- getVariable id
-
-    return cgGetBaseType goatType
+    if isReference then do
+        r <- nextRegister
+        writeInstruction "load" [showReg r, show slot]
+        return (isReference, goatType, r)
+    return (isReference, goatType, slot)
 cgGetVariableType LArrayRef pos id expr = do
-    (_,goatType,slot) <- getVariable id
-    return cgGetBaseType goatType
+    (isReference, goatType, slot) <- getVariable id
+    --stack slot chnges depending on array index. assumes getVariable returns the stacknum of index 0 in array
+    --maybe the expression should be evaluated. do we have any function for that?
+    return (isReference, goatType, slot + expr - 1)
 cgGetVariableType LMatrixRef pos id expr1 expr2 = do
-    (_,goatType,slot) <- getVariable id
-    return cgGetBaseType goatType
+    --assumes accessing array[10][3] from array[10][10] means  the stack slot is +93 or something like that 
+    (isReference, goatType, slot) <- getVariable id
+    return (isReference, goatType, slot + (expr1 * expr2) + expr2 - 1)
+
+cgWriteStringStatement :: Expr -> CodeGen()
+cgWriteStringStatement StrCon pos string = do
+    cgCharracterString string regZero
+    writeInstruction "call_builtin" ["print_string"]
+
+cgWriteStatement :: Expr -> Codegen ()
+cgWriteStatement expr = do
+    cgExpression expr regZero
+    t <- cgGetBaseType getRegType regZero
+    let name = case t of
+            IntType -> "print_int"
+            FloatType -> "print_real"
+            BoolType -> "print_bool"
+            _ -> error "unwritable type"
+writeInstruction "call_builtin" [name]
+
+
+cgIntToReal :: Reg -> Codegen ()
+cgIntToReal r = do
+    writeInstruction "int_to_real" [showReg r, showReg r]
+    putRegType r astTypeReal

@@ -1,42 +1,50 @@
---  File     : GoatParser.hs
---  Author   : Wentao Liu, Raymond Sun, Zeyu Huang, Yiqun Wang
---  Origin   : Sat 6 Apr 2019
---  Purpose  : Goat parser for creating the GoatAST data and 
---             printing by GoatPrinter
+module GoatParser (ast)
+where
 
-module Main where
+-------------------------------------------------------------------------
+--  A parser for Goat, poorly commented.
+--  It should still be fairly easy to read, as it uses the Parsec parser
+--  library.
+--
+--  Harald Sondergaard, April 2019
+-------------------------------------------------------------------------
 
 import GoatAST
-import GoatPrinter
 import Data.Char
-import Data.List
 import Text.Parsec
 import Text.Parsec.Language (emptyDef)
-import qualified Text.Parsec.Token as Q
 import Text.Parsec.Expr
+import Text.Parsec.Pos
+import qualified Text.Parsec.Token as Q
 import System.Environment
 import System.Exit
 
+data MaybeOneOrTwo a
+  = None
+  | One a
+  | Two a a
+  | TooMany
+    deriving (Eq, Show)
+
 type Parser a
-    = Parsec String Int a
+   = Parsec String Int a
 
 lexer :: Q.TokenParser Int
 lexer
-    = Q.makeTokenParser
-      (emptyDef
-      { Q.commentLine     = "#"
-      , Q.nestedComments  = True
-      , Q.identStart      = letter
-      , Q.opStart         = oneOf "+-*:"
-      , Q.opLetter        = oneOf "+-*:"
-      , Q.reservedNames   = myReserved
-      , Q.reservedOpNames = myOpnames
-      })
+   = Q.makeTokenParser
+     (emptyDef
+     { Q.commentLine     = "#"
+     , Q.nestedComments  = True
+     , Q.identStart      = letter
+     , Q.opStart         = oneOf "+-*/=!<>&|:"
+     , Q.opLetter        = oneOf "=&|"
+     , Q.reservedNames   = myReserved
+     , Q.reservedOpNames = myOpnames
+     })
 
 whiteSpace = Q.whiteSpace lexer
 lexeme     = Q.lexeme lexer
 natural    = Q.natural lexer
-float      = Q.float lexer
 identifier = Q.identifier lexer
 colon      = Q.colon lexer
 semi       = Q.semi lexer
@@ -45,287 +53,374 @@ parens     = Q.parens lexer
 squares    = Q.squares lexer
 reserved   = Q.reserved lexer
 reservedOp = Q.reservedOp lexer
-naturalOrFloat = Q.naturalOrFloat lexer
 
 myReserved, myOpnames :: [String]
 
 myReserved
-  = ["begin", "bool", "call", "do", "else", "end", "false", "fi", "float", "if", 
-      "int", "od", "proc", "read", "ref", "then", "true", "val", "while", "write"]
-      
+  = [ "begin", "bool", "call", "do", "else", "end", "false"
+    , "fi", "float", "if", "int", "od", "proc", "read"
+    , "ref", "then", "true", "val", "while", "write"
+    ]
+
 myOpnames 
-  = ["+", "-", "*", "/", ":=", "||", "&&", "!", "=", "!=", "<", "<=", ">", ">="]
+  = [ "+", "-", "*", "/"
+    , "=", "!=", "<", ">", "<=", ">="
+    , "&&", "||", "!", ":="
+    ]
 
------------------------------------------------------------------
---  pProg is the topmost parsing function. It looks for a program
---  header "proc main()", followed by the program body.
------------------------------------------------------------------
+-- Translate a source code position to a pair of integers (line, column)
 
-pProg :: Parser Proc
-pProg
+comps :: SourcePos -> (Int,Int)
+comps pos
+  = (sourceLine pos, sourceColumn pos)
+
+pExp :: Parser Expr
+pExp
+  = buildExpressionParser table pFac
+    <?> "expression"
+
+pFac
+  = choice [parens pExp, pNum, pBool, pIdent]
+    <|> do
+          pos <- getPosition
+          reservedOp "-"
+          exp <- pFac
+          return (UnaryMinus (comps pos) exp)
+    <?> "simple expression"
+
+table   
+  = [ [ prefix "-" UnaryMinus ]
+    , [ binary "*" Op_mul
+      , binary "/" Op_div
+      ]
+    , [ binary "+" Op_add
+      , binary "-" Op_sub
+      ]
+    , [ relation "="  Op_eq
+      , relation "!=" Op_ne
+      , relation "<"  Op_lt
+      , relation "<=" Op_le
+      , relation ">"  Op_gt
+      , relation ">=" Op_ge
+      ]
+    , [ prefix "!" Not ]
+    , [ binLogic "&&" And ]
+    , [ binLogic "||" Or ]
+    ]
+
+binary name op 
+  = Infix (do { pos <- getPosition
+              ; reservedOp name
+              ; return (BinOpExp (comps pos) op) 
+              }
+          ) AssocLeft
+
+binLogic name op 
+  = Infix (do { pos <- getPosition
+              ; reservedOp name 
+              ; return (op (comps pos))
+              }
+          ) AssocLeft
+
+relation name rel
+  = Infix (do { pos <- getPosition
+              ; reservedOp name
+              ; return (Rel (comps pos) rel) 
+              }
+          ) AssocNone
+
+prefix name fun 
+  = Prefix (do { pos <- getPosition
+               ; reservedOp name
+               ; return (fun (comps pos))
+               }
+           )
+
+pProgram :: Parser Program
+pProgram 
+  = do
+      procs <- many1 pProc
+      return (Program procs)
+
+pProc :: Parser Procedure
+pProc
   = do
       reserved "proc"
-      -- reserved "main"
-      ident <- identifier 
-      -- parens (return ())
-      params <- parens pProgHeader 
-      (decls,stmts) <- pProgBody
-      return (Proc ident params decls stmts)
-
-
-pProgHeader :: Parser [Param]
-pProgHeader
-  = sepBy pProgParam comma
-
-pProgParam :: Parser Param
-pProgParam
-  = do
-      paramtype <- pParamType
-      basetype <- pBaseType
-      ident <- identifier
-      return (Param paramtype basetype ident)
-
-pParamType :: Parser ParamType
-pParamType
-  = do { reserved "val"; return Val }
-    <|>
-    do { reserved "ref"; return Ref }
------------------------------------------------------------------
---  pProgBody looks for a sequence of declarations followed by a
---  sequence of statements.
------------------------------------------------------------------
-
-pProgBody :: Parser ([Decl],[Stmt])
-pProgBody
-  = do
-      decls <- many pDecl
-      reserved "begin"
-      stmts <- many1 pStmt
+      pos <- getPosition
+      (ident,argspecs) <- pProcHead
+      (decls,stmts) <- pProcbody
       reserved "end"
-      return (decls,stmts)
-
-pDecl :: Parser Decl
-pDecl
+      return (Procedure (comps pos) ident argspecs decls stmts)
+      
+pProcHead :: Parser (Ident, [FormalArgSpec])
+pProcHead
   = do
-    basetype <- pBaseType
-    ident <- identifier
-    size <- optionMaybe $ squares pArraySize
-    whiteSpace
-    semi
-    case size of 
-      Nothing -> return (BaseDecl ident basetype)
-      Just s -> return (ArrayDecl ident s basetype)
+      ident <- identifier
+      argspecs <- parens (sepBy pArg comma)
+      pos <- getPosition
+      let lineCol = comps pos
+      return (ident,argspecs)
 
-pArraySize :: Parser ArraySize
-pArraySize
-  = do 
-    x <- pInt
-    optional comma
-    y <- optionMaybe pInt
-    case y of 
-      Nothing -> return (OneDimen x)
-      Just i -> return (Matrix x i)
-    
-pInt :: Parser Int
-pInt 
-  = do 
-    n <- natural
-    return (fromInteger n::Int)
-  
+pArg :: Parser FormalArgSpec
+pArg
+  = do
+      mode <- pParmode
+      basetype <- pBaseType
+      pos <- getPosition
+      ident <- identifier
+      return (FormalArgSpec (comps pos) mode basetype ident)
+
+pParmode :: Parser ParMode
+pParmode
+  = do { reserved "val"; return Val }
+    <|> 
+    do { reserved "ref"; return Ref }
 
 pBaseType :: Parser BaseType
+
 pBaseType
   = do { reserved "bool"; return BoolType }
     <|>
     do { reserved "int"; return IntType }
     <|>
-    do { reserved "float"; return FloatType}
-      
------------------------------------------------------------------
---  pStmt is the main parser for statements. It wants to recognise
---  read and write statements, and assignments.
------------------------------------------------------------------
+    do { reserved "float"; return FloatType }
 
-pStmt, pRead, pWrite, pAsg, pIfElse, pWhile, pCall :: Parser Stmt
+pProcbody :: Parser ([Decl],[Stmt])
+pProcbody
+  = do
+      decls <- many pDecl
+      reserved "begin"
+      stmts <- many1 pStmt
+      return (decls,stmts)
+
+pDecl :: Parser Decl
+pDecl
+  = do
+      basetype <- pBaseType
+      pos <- getPosition
+      ident <- identifier
+      whiteSpace
+      rest <- pMaybeIndices
+      if rest == TooMany then
+        unexpected "extra dimension(s)"
+      else 
+        do
+          semi
+          let 
+            typespec
+              = case rest of
+                  None -> Base basetype
+                  One n -> Array basetype n
+                  Two m n -> Matrix basetype m n
+          return (Decl (comps pos) ident typespec)
+
+pMaybeIndices :: Parser (MaybeOneOrTwo Int)
+pMaybeIndices
+  = do { indices <- squares (sepBy1 natural comma)
+       ; case indices of
+           [n] -> return (One (fromInteger n))
+           [m,n] -> return (Two (fromInteger m) (fromInteger n))
+           _ -> return TooMany
+       }
+    <|>
+    return None
+
+pStmt, pRead, pWrite, pCall, pCond, pWhile, pAsg :: Parser Stmt
 
 pStmt 
-  = choice [pRead, pWrite, pAsg, pIfElse, pWhile, pCall]
+  = choice [pRead, pWrite, pCall, pCond, pWhile, pAsg]
 
 pRead
   = do 
+      pos <- getPosition
       reserved "read"
       lvalue <- pLvalue
       semi
-      return (Read lvalue)
+      return (Read (comps pos) lvalue)
 
 pWrite
   = do 
+      pos <- getPosition
       reserved "write"
       exp <- (pString <|> pExp)
       semi
-      return (Write exp)
+      return (Write (comps pos) exp)
 
 pCall
+  = do 
+      reserved "call"
+      pos <- getPosition
+      ident <- identifier
+      exps <- parens (sepBy pExp comma)
+      semi
+      return (ProcCall (comps pos) ident exps)
+
+pCond
   = do
-    reserved "call"
-    ident <- identifier
-    exprlist <- parens (sepBy1 pExp comma)
-    semi
-    return (Call ident exprlist)
+      reserved "if"
+      pos <- getPosition
+      cond <- pExp
+      reserved "then"
+      stmts1 <- many1 pStmt
+      stmts2 <- pIftail
+      let result = if null stmts2 
+          then If (comps pos) cond stmts1 
+          else IfElse (comps pos) cond stmts1 stmts2
+      return result
+      
+pWhile
+  = do
+      reserved "while"
+      pos <- getPosition
+      cond <- pExp
+      reserved "do"
+      stmts <- many1 pStmt
+      reserved "od"
+      return (While (comps pos) cond stmts)
 
 pAsg
   = do
       lvalue <- pLvalue
+      pos <- getPosition
       reservedOp ":="
       rvalue <- pExp
       semi
-      return (Assign lvalue rvalue)
+      return (Assign (comps pos) lvalue rvalue)
 
-pIfElse
-  = do
-    reserved "if"
-    exp <- pExp
-    reserved "then"
-    stmts1 <- many1 pStmt
-    optional (reserved "else")
-    stmts2 <- optionMaybe (many1 pStmt)
-    reserved "fi"
-    case stmts2 of 
-      Nothing -> return (If exp stmts1)
-      Just stmts -> return (IfElse exp stmts1 stmts)
-
-pWhile
-  = do
-    reserved "while"
-    exp <- pExp
-    reserved "do"
-    stmts <- many1 pStmt
-    reserved "od"
-    return (While exp stmts)
-  
-
------------------------------------------------------------------
---  pExp is the main parser for expressions. It takes into account
---  the operator precedences and the fact that the binary operators
---  are left-associative.
------------------------------------------------------------------
-
-pExp, pNum, pIdent, pString, pBool :: Parser Expr
-
-pExp = buildExpressionParser table pFac 
-        <?> "expression"
-
-pFac = choice [parens pExp, pNum, pIdent, pString, pBool]
-
-table = [ [ prefix "-" (UnaryExpr Op_umin) ]
-        , [ binary "*" (BinExpr Op_mul), binary "/" (BinExpr Op_div) ] 
-        , [ binary "+" (BinExpr Op_add), binary "-" (BinExpr Op_sub) ] 
-        , [ relation "=" (BinExpr Op_eq), relation "!=" (BinExpr Op_ne)
-          , relation "<=" (BinExpr Op_lte), relation "<" (BinExpr Op_lt)
-          , relation ">=" (BinExpr Op_gte), relation ">" (BinExpr Op_gt) ] 
-        , [ prefix "!" (UnaryExpr Op_uneg) ]
-        , [ binary "&&" (BinExpr Op_add) ]
-        , [ binary "||" (BinExpr Op_or) ]
-        ]
-
-prefix name fun = Prefix (do { reservedOp name; return fun })
-
-binary name op = Infix (do { reservedOp name; return op }) AssocLeft
-
-relation name rel = Infix (do { reservedOp name; return rel }) AssocNone
-
+pIftail :: Parser [Stmt]
+pIftail
+  = do { reserved "else"
+       ; stmts <- many1 pStmt
+       ; reserved "fi"
+       ; return stmts
+       }
+    <|> 
+    do { reserved "fi"; return [] }
+ 
 pString 
   = do
+      pos <- getPosition
       char '"'
       str <- many (satisfy (/= '"'))
       char '"'
-      return (StrConst str)
+      whiteSpace
+      return (StrCon (comps pos) str)
     <?>
     "string"
 
-pBool
-  = do { reserved "true"; return (BoolConst True) }
-    <|>
-    do { reserved "false"; return (BoolConst False) }
-
 pNum
   = do
-        n <- naturalOrFloat;
-        case n of 
-          Left i -> return (IntConst (fromInteger i :: Int))
-          Right f -> return (FloatConst (realToFrac f :: Float))
-    <?>
+      pos <- getPosition
+      whole <- many1 digit
+      rest <- pNumtail
+      let val = case rest of 
+                Nothing   
+                  -> IntCon (comps pos) (read whole :: Int)
+                Just frac 
+                  -> FloatCon (comps pos) ((read (whole++frac)) :: Float)
+      return val
+    <?> 
     "number"
+
+pNumtail :: Parser (Maybe String)
+pNumtail
+  = do { char '.'; frac <- many1 digit; whiteSpace; return (Just ('.':frac)) }
+    <|> 
+    do { whiteSpace; return Nothing }
+      
+pBool
+  = do { pos <- getPosition
+       ; reserved "true"
+       ; return (BoolCon (comps pos) True) 
+       }
+    <|>
+    do { pos <- getPosition
+       ; reserved "false"
+       ; return (BoolCon (comps pos) False) 
+       }
 
 pIdent 
   = do
-    ident <- identifier 
-    aindex <- optionMaybe (squares pArrayIndex)
-    case aindex of
-      Nothing -> return (Id ident)  
-      Just i -> return (Array ident i)
+      pos <- getPosition
+      ident <- identifier
+      expressions <- pMaybeIndexExps
+      if expressions == TooMany then
+        unexpected "extra dimension(s)"
+      else
+        do
+          case expressions of 
+            None -> return (Id (comps pos) ident)
+            One e -> return (ArrayRef (comps pos) ident e)
+            Two e1 e2 -> return (MatrixRef (comps pos) ident e1 e2)
+    <?>
+    "identifier"
 
 pLvalue :: Parser Lvalue
 pLvalue
-  = do 
-    ident <- identifier
-    aindex <- optionMaybe $ squares pArrayIndex
-    case aindex of 
-      Nothing -> return (LId ident)
-      Just i -> return (LArray ident i)
+  = do
+      pos <- getPosition
+      ident <- identifier
+      expressions <- pMaybeIndexExps
+      if expressions == TooMany then
+        unexpected "extra dimension(s)"
+      else
+        do
+          case expressions of 
+            None -> return (LId (comps pos) ident)
+            One e -> return (LArrayRef (comps pos) ident e)
+            Two e1 e2 -> return (LMatrixRef (comps pos) ident e1 e2)
     <?>
     "lvalue"
+      
+pMaybeIndexExps :: Parser (MaybeOneOrTwo Expr)
+pMaybeIndexExps
+  = do { expressions <- squares (sepBy1 pExp comma)
+       ; case expressions of
+           [e] -> return (One e)
+           [e1,e2] -> return (Two e1 e2)
+           _ -> return TooMany
+       }
+    <|>
+    return None
 
-pArrayIndex :: Parser ArrayIndex
-pArrayIndex
-  = do 
-    x <- pExp
-    optional comma
-    y <- optionMaybe pExp
-    case y of 
-      Nothing -> return (OneDimenIndex x)
-      Just i -> return (MatrixIndex x i)
- 
------------------------------------------------------------------
--- main
------------------------------------------------------------------
+-------------------------------------------------------------------------
+-- 
+--  A function main, to run the parser and pretty-printer.  
+--  Later modules will simply use the exported function ast.
+-- 
+-------------------------------------------------------------------------
 
-pMain :: Parser GoatProgram
-pMain
+goatParse :: Parser Program
+goatParse
   = do
       whiteSpace
-      p <- many1 pProg
+      p <- pProgram
       eof
-      return (Program p)
+      return p
+
+ast :: String -> Either ParseError Program
+ast input
+  =  runParser goatParse 0 "" input
 
 main :: IO ()
 main
   = do { progname <- getProgName
-        ; args <- getArgs
-        ; checkArgs progname args
-        ; input <- readFile (last args)
-        ; let output = runParser pMain 0 "" input
-        ; case output of
-            Right ast -> putStr $ pretty ast
-            Left  err -> do { putStr "Parse error at "
-                            ; print err
-                            }
-        }
-
- 
+       ; args <- getArgs
+       ; checkArgs progname args
+       ; input <- readFile (head args)
+       ; let output = runParser goatParse 0 "" input
+       ; case output of
+           Right ast -> print ast
+           Left  err -> do { putStr "Parse error at "
+                           ; print err
+                           }
+       }
 
 checkArgs :: String -> [String] -> IO ()
---need to confirm filename is a .gt file
-checkArgs _ ["-p",filename]
-    = return ()
-checkArgs progname [filename]
-    = do { putStrLn (progname ++ "\n" ++ (concat [filename]) ++ "\nSorry, code cannot be generated yet\n")
-        ; exitWith (ExitFailure 1)
-        }
-checkArgs progname args
-    = do { putStrLn ((Data.List.intercalate " " args) ++ "\nUsage: " ++ progname ++ " filename\n\n")
-        ; exitWith (ExitFailure 1)
-        }
+checkArgs _ [filename]
+   = return ()
+checkArgs progname _
+   = do { putStrLn ("Usage: " ++ progname ++ " filename\n\n")
+       ; exitWith (ExitFailure 1)
+       }
 
-
-        

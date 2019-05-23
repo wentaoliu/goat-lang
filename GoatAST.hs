@@ -1,165 +1,94 @@
---  File     : GoatAST.hs
---  Author   : Wentao Liu, Raymond Sun, Zeyu Huang, Yiqun Wang
---  Origin   : Thu 4 Apr 2019
---  Purpose  : Specification of an AST for Goat
-
 module GoatAST where
-import Numeric
-import Data.List
------------------------------------
--- Specification of an AST for Goat
------------------------------------
+
+---------------------------------------------------------------------------
+--  Specification of an AST for Goat 
+--
+--  Harald Sondergaard, April 2019
+-- 
+--  The constructors for the AST are mainly self-explanatory. We leave 
+--  open the possibility of an expression 'ToFloat e', in preparation for 
+--  static semantic analysis; that is, we intend to let the analyzer 
+--  change the AST when it sees a need for integer-to-float conversion.
+--
+--  We also decorate the tree with source code position information. 
+--  A 'pos' of type Pos is a pair (line, column). This way the semantic
+--  analysis can give meaningful error messages, without the parser
+--  having to construct a symbol table - that can be left to the 
+--  analysis stage.
+---------------------------------------------------------------------------
 
 type Ident = String
 
-data ArraySize
-    = OneDimen Int
-    | Matrix Int Int 
-    deriving (Eq)
+type Pos
+  = (Int,Int)
+ 
+data BaseType 
+  = BoolType | IntType | FloatType | StringType
+    deriving (Show,Eq)
 
-data ArrayIndex
-    = OneDimenIndex Expr
-    | MatrixIndex Expr Expr
-    deriving (Eq)
+data GoatType 
+  = Base BaseType
+  | Array BaseType Int
+  | Matrix BaseType Int Int
+    deriving (Show,Eq)
 
-data BaseType
-    = BoolType | IntType | FloatType
-    deriving (Eq)
+data Lvalue 
+  = LId Pos Ident 
+  | LArrayRef Pos Ident Expr 
+  | LMatrixRef Pos Ident Expr Expr 
+    deriving (Show,Eq)
 
-data Lvalue
-    = LId Ident
-    | LArray Ident ArrayIndex
-    deriving (Eq)
+data Binop 
+  = Op_add | Op_sub | Op_mul | Op_div 
+    deriving (Show,Eq)
 
-data Binop
-    = Op_or | Op_and | Op_add | Op_mul | Op_sub | Op_div | Op_eq |     
-    Op_ne | Op_gt | Op_gte | Op_lt | Op_lte
-    -- deriving (Show, Enum, Eq)
-    deriving (Enum, Eq)
-
-data UnaryOp
-    = Op_uneg | Op_umin
-    -- deriving (Show, Enum, Eq)
-    deriving (Enum, Eq)
+data Relop
+  = Op_eq | Op_ne | Op_ge | Op_le | Op_gt | Op_lt
+    deriving (Show,Eq)
 
 data Expr
-    = BoolConst Bool
-    | IntConst Int
-    | FloatConst Float
-    | StrConst String
-    | Id Ident
-    | Array Ident ArrayIndex
-    | BinExpr Binop Expr Expr
-    | UnaryExpr UnaryOp Expr
-    deriving (Eq)
+  = BoolCon Pos Bool
+  | And Pos Expr Expr
+  | Or Pos Expr Expr
+  | Not Pos Expr
+  | Rel Pos Relop Expr Expr
+  | IntCon Pos Int
+  | FloatCon Pos Float
+  | StrCon Pos String
+  | Id Pos Ident
+  | ArrayRef Pos Ident Expr
+  | MatrixRef Pos Ident Expr Expr
+  | BinOpExp Pos Binop Expr Expr
+  | UnaryMinus Pos Expr
+    deriving (Show,Eq)
 
-data Decl
-    = BaseDecl Ident BaseType
-    | ArrayDecl Ident ArraySize BaseType
-    deriving (Show, Eq)
+data Decl 
+  = Decl Pos Ident GoatType
+    deriving (Show,Eq)
 
-data Stmt
-    = Assign Lvalue Expr
-    -- | Assign Lvalue ArrayIndex Expr
-    | Read Lvalue
-    -- | Read Lvalue ArrayIndex
-    | Write Expr
-    | Call Ident [Expr]
-    | If Expr [Stmt]
-    | IfElse Expr [Stmt] [Stmt]
-    | While Expr [Stmt]
-    deriving (Eq)
+data Stmt 
+  = Assign Pos Lvalue Expr
+  | Read Pos Lvalue
+  | Write Pos Expr
+  | ProcCall Pos Ident [Expr]
+  | If Pos Expr [Stmt]
+  | IfElse Pos Expr [Stmt] [Stmt]
+  | While Pos Expr [Stmt]
+    deriving (Show,Eq)
 
-data Proc
-    = Proc Ident [Param] [Decl] [Stmt]
-    deriving (Show, Eq)
+data ParMode 
+  = Val | Ref
+    deriving (Show,Eq)
 
-data ParamType 
-    = Ref | Val
-    deriving (Eq)
-    
-data Param
-    = Param ParamType BaseType Ident
-    deriving (Show, Eq)
+data FormalArgSpec
+  = FormalArgSpec Pos ParMode BaseType Ident
+    deriving (Show,Eq)
 
-data GoatProgram
-    = Program [Proc]
-    deriving (Show, Eq)
+data Procedure 
+  = Procedure Pos Ident [FormalArgSpec] [Decl] [Stmt]
+    deriving (Show,Eq)
 
-
------------------------------------------------------------------
---  Instantiate show for formating smaller components of a stmt
------------------------------------------------------------------
-
-instance Show Expr where
-    show (BoolConst b)
-        | b == True = "true"    
-        | b == False = "false"
-    show (IntConst i) = show i
-    --showFFloat to print floats not as exponents 
-    show (FloatConst f) = showFFloat Nothing f ""
-    show (StrConst s) = "\"" ++ s ++ "\""
-    show (Id id) = id
-    show (Array id aindex) = id ++ show aindex
-    show (BinExpr b e1 e2) = 
-        intercalate " " [showWrap e1, show b, showWrap e2]
-    show (UnaryExpr u e) = show u ++ show e
-
--- Wrap operands of an expression with parentheses
-showWrap :: Expr -> String
-showWrap expr = case expr of
-    BinExpr b e1 e2 -> "(" ++ show expr ++ ")"
-    _ -> show expr
-    
-
-instance Show Stmt where
-    show (Assign lval e) = show lval ++ " := " ++ show e
-    show (Read lval) = "read " ++ show lval
-    show (Write e) = "write " ++ show e
-    show (Call id exprs) = 
-        "call " ++ id ++ 
-        "(" ++ intercalate ", " (map show exprs) ++ ")"
-    -- other cases should be handled by GoatPrinter.formatStmtI
-    show _ = "<Stub for a (If|IfElse|While) block>"
-
-instance Show ArraySize where
-    show (OneDimen len) = "[" ++ show len ++ "]"
-    show (Matrix h w) = "[" ++ show h ++ ", " ++ show w ++ "]"
-    -- bug fix: space after comma
-
-instance Show ArrayIndex where
-    show (OneDimenIndex e) = "[" ++ show e ++ "]"
-    show (MatrixIndex e1 e2) = "[" ++ show e1 ++ ", " ++ show e2 ++ "]"
-    -- bug fix: space after comma
-
-instance Show Lvalue where
-    show (LId id) = id
-    show (LArray id aindex) = id ++ show aindex
-
-instance Show Binop where
-    show Op_or  = "||"
-    show Op_and = "&&"
-    show Op_add = "+"
-    show Op_sub = "-"
-    show Op_div = "/"
-    show Op_mul = "*"
-    show Op_eq  = "="
-    show Op_ne  = "!="
-    show Op_gt  = ">"
-    show Op_gte = ">="
-    show Op_lt  = "<"
-    show Op_lte = "<="
-
-instance Show UnaryOp where
-    show Op_uneg = "!"
-    show Op_umin = "-"
-                        
-
-instance Show BaseType where
-    show BoolType = "bool"
-    show IntType = "int"
-    show FloatType = "float"
-
-instance Show ParamType where
-    show Ref = "ref"
-    show Val = "val"
+data Program 
+  = Program [Procedure]
+    deriving (Show,Eq)
+ 

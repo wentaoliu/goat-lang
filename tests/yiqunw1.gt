@@ -4,10 +4,13 @@ proc main()
 	int j;
 begin
 	i := 0;
+	j := 0;
 	while i < 3 do
 		while j < 4 do
 			a[i,j] := i * 2 + j;
+			j := j+1;
 		od
+		i := i+1;
 	od
 	call writeresult (2, 2);
 end
@@ -21,7 +24,7 @@ begin
 	while i < x do
 		while j < y do
 			write a[i,j];
-			write " "
+			write " ";
 			j := j+1;
 		od
 		write "\n";

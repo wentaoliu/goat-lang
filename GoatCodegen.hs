@@ -343,3 +343,34 @@ cgExpression (Not _ expr) = do
         BoolType -> writeInstruction "not" [showReg reg, showReg reg]
         otherwise -> error $ "expected bool, found " ++ show typ
     return (reg, typ)
+
+
+---------------------------------------------------------------------
+
+cgGetVariableType :: Lvalue -> BaseType
+cgGetVariableType LId pos id = do
+    (_,goatType,_) <- getVariable id
+    return cgGetBaseType goatType
+cgGetVariableType LArrayRef pos id expr = do
+    (_,goatType,_) <- getVariable id
+    return cgGetBaseType goatType
+cgGetVariableType LMatrixRef pos id expr1 expr2 = do
+    (_,goatType,_) <- getVariable id
+    return cgGetBaseType goatType
+
+cgGetBaseType :: GoatType -> BaseType
+cgGetBaseType BaseType bt = bt
+cgGetBaseType Array bt num = bt
+cgGetBaseType Matrix  bt num1 num2 = bt
+
+cgVariableAccess :: Lvalue -> CodeGen (BaseType, Int)
+cgGetVariableType LId pos id = do
+    (isReference, goatType, slot) <- getVariable id
+
+    return cgGetBaseType goatType
+cgGetVariableType LArrayRef pos id expr = do
+    (_,goatType,slot) <- getVariable id
+    return cgGetBaseType goatType
+cgGetVariableType LMatrixRef pos id expr1 expr2 = do
+    (_,goatType,slot) <- getVariable id
+    return cgGetBaseType goatType

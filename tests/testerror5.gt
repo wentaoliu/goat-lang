@@ -1,0 +1,6 @@
+proc testerror5()
+begin
+if a>b then
+fi
+while a>b do od
+end

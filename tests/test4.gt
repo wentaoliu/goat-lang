@@ -1,0 +1,6 @@
+proc test4()
+begin
+if a >= 5 then
+a:=1;
+fi
+end

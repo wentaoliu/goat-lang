@@ -227,6 +227,7 @@ cgProcedure' [] decls stmts = do
     -- generate function body
     writeComment "prologue"
     cgPushStackFrame size
+    cgInitVariablePart decls
     cgCompoundStatement stmts
     writeComment "epilogue"
     cgPopStackFrame size

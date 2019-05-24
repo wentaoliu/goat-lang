@@ -411,64 +411,73 @@ cgExpression (Not _ expr) = do
         BoolType -> writeInstruction "not" [showReg reg, showReg reg]
         otherwise -> error $ "expected bool, found " ++ show typ
     return (reg, typ)
+-- temporary catch all for unimplemented cases
+cgExpression _ = do
+    writeComment "some unimplemented expr case here"
+    return (0,FloatType)
+
 
 
 ---------------------------------------------------------------------
 
-cgGetVariableType :: Lvalue -> CodeGen (BaseType)
-cgGetVariableType LId pos id = do
+cgGetVariableType :: Lvalue -> Codegen (BaseType)
+cgGetVariableType (LId pos id) = do
     (_,goatType,_) <- getVariable id
-    return cgGetBaseType goatType
-cgGetVariableType LArrayRef pos id expr = do
+    return (cgGetBaseType goatType)
+cgGetVariableType (LArrayRef pos id expr) = do
     (_,goatType,_) <- getVariable id
-    return cgGetBaseType goatType
-cgGetVariableType LMatrixRef pos id expr1 expr2 = do
+    return (cgGetBaseType goatType)
+cgGetVariableType (LMatrixRef pos id expr1 expr2) = do
     (_,goatType,_) <- getVariable id
-    return cgGetBaseType goatType
+    return (cgGetBaseType goatType)
 
 cgGetBaseType :: GoatType -> BaseType
-cgGetBaseType BaseType bt = bt
-cgGetBaseType Array bt num = bt
-cgGetBaseType Matrix  bt num1 num2 = bt
+cgGetBaseType (Base bt) = bt
+cgGetBaseType (Array bt num) = bt
+cgGetBaseType (Matrix  bt num1 num2) = bt
 
---returns the reference type, data type of the variable and stacknum to load it from. 
---jack9966 wrapped refType and stacknum together in 'data VarAddress' but i didnt
-cgVariableAccess :: Lvalue -> CodeGen (Bool, BaseType, Int)
-cgGetVariableType LId pos id = do
+--returns the reference type, data type and location of a named variable
+-- location is slotnum if its a value (bool=false) and register num if its a reference (bool=true)
+cgVariableAccess :: Lvalue -> Codegen (Bool, BaseType, Int)
+cgVariableAccess (LId pos id) = do
     (isReference, goatType, slot) <- getVariable id
-    if isReference then do
+    if not isReference then do
+        -- var is a value and can be read directly from
+        return (isReference, cgGetBaseType goatType, slot)
+    else do
+        -- var is a reference, the returned 
         r <- nextRegister
         writeInstruction "load" [showReg r, show slot]
-        return (isReference, goatType, r)
-    return (isReference, goatType, slot)
-cgGetVariableType LArrayRef pos id expr = do
+        return (isReference, cgGetBaseType goatType, r)
+cgVariableAccess (LArrayRef pos id expr) = do
     (isReference, goatType, slot) <- getVariable id
     --stack slot chnges depending on array index. assumes getVariable returns the stacknum of index 0 in array
     --maybe the expression should be evaluated. do we have any function for that?
-    return (isReference, goatType, slot + expr - 1)
-cgGetVariableType LMatrixRef pos id expr1 expr2 = do
-    --assumes accessing array[10][3] from array[10][10] means  the stack slot is +93 or something like that 
+    (reg, baseType) <- cgExpression expr
+    r <- nextRegister
+    -- put address of array[0] into r
+    writeInstruction "load_address" [showReg r, show slot]
+    -- increment address of array[0] by the value in reg (the expression)
+    writeInstruction "sub_offset" [showReg r, showReg r, show reg]
+    return (True, cgGetBaseType goatType, r)
+cgVariableAccess (LMatrixRef pos id expr1 expr2) = do
+    --assumes accessing array[8][3] from array[10][10] means  the stack slot is +83 or something like that 
     (isReference, goatType, slot) <- getVariable id
-    return (isReference, goatType, slot + (expr1 * expr2) + expr2 - 1)
+    r1 <- nextRegister
+    writeInstruction "int_const" [showReg r1, show $ getFstDimen goatType]
+    (reg1, bt1) <- cgExpression expr1
+    (reg2, bt2) <- cgExpression expr2
+    writeInstruction "mul_int" [showReg r1, showReg r1, showReg reg1]
+    writeInstruction "add_int" [showReg r1, showReg r1, showReg reg2]
+    return (True, cgGetBaseType goatType, r1)
 
-cgWriteStringStatement :: Expr -> CodeGen()
-cgWriteStringStatement StrCon pos string = do
-    cgCharracterString string regZero
-    writeInstruction "call_builtin" ["print_string"]
-
-cgWriteStatement :: Expr -> Codegen ()
-cgWriteStatement expr = do
-    cgExpression expr regZero
-    t <- cgGetBaseType getRegType regZero
-    let name = case t of
-            IntType -> "print_int"
-            FloatType -> "print_real"
-            BoolType -> "print_bool"
-            _ -> error "unwritable type"
-writeInstruction "call_builtin" [name]
-
+getFstDimen :: GoatType -> Int
+getFstDimen (Matrix bt s1 s2) = s1
+getFstDimen _ = error "getFstDimen error"
 
 cgIntToReal :: Reg -> Codegen ()
 cgIntToReal r = do
     writeInstruction "int_to_real" [showReg r, showReg r]
-    putRegType r astTypeReal
+    putRegType r (Base FloatType) 
+
+    

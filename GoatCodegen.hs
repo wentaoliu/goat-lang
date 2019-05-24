@@ -5,6 +5,9 @@ import GoatSymTable
 import qualified Data.Map as Map
 import Control.Monad
 
+-- additional lib (bob-3)
+-- import  Data.Bool
+
 type StackSlot = Int
 type Label = String
 type LabelCounter = Int
@@ -390,7 +393,8 @@ cgExpression (Rel _ relop expr1 expr2) = do
             Op_lt -> "cmp_lt_"
     let relopType = 
             case optype of 
-            OpType IntType -> "int"
+            OpType BoolType  -> "int" 
+            OpType IntType   -> "int"
             OpType FloatType -> "real"
     writeInstruction (relopInstruction ++ relopType)
                      [showReg reg1, showReg reg1, showReg reg2]
@@ -493,6 +497,7 @@ flattenMatrixIndex regRowIndex regColIndex (Matrix mbtype rows cols) = do
 
 -- data OperatorType = IntOp | RealOp
 data OpType = OpType BaseType
+            -- | IllegalOp BaseType BaseType
 
 -- deconstruct OpType to get BaseType
 fromOpType :: OpType -> BaseType
@@ -533,7 +538,13 @@ cgPrepareLogical r1 r2 = do
                      (show t1) ++ " and " ++ (show t2)
 
 cgPrepareComparison :: Reg -> Reg -> Codegen (OpType)
-cgPrepareComparison = cgPrepareArithmetic
+cgPrepareComparison r1 r2 = do
+    t1 <- getRegType r1
+    t2 <- getRegType r2
+    if (t1, t2) == (Base BoolType, Base BoolType)
+    then do return (OpType BoolType)
+    else do cgPrepareArithmetic r1 r2
+
 
 
 

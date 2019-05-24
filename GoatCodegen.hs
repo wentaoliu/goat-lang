@@ -30,7 +30,6 @@ instance Applicative Codegen where
     pure = return
     (<*>) = Control.Monad.ap
 
-
 -- helper functions for operations on monad
 initState :: State
 initState = State 0 [] initSymbols (-1) (-1)
@@ -347,7 +346,7 @@ cgExpression (Not _ expr) = do
 
 ---------------------------------------------------------------------
 
-cgGetVariableType :: Lvalue -> BaseType
+cgGetVariableType :: Lvalue -> CodeGen (BaseType)
 cgGetVariableType LId pos id = do
     (_,goatType,_) <- getVariable id
     return cgGetBaseType goatType
@@ -365,7 +364,7 @@ cgGetBaseType Matrix  bt num1 num2 = bt
 
 --returns the reference type, data type of the variable and stacknum to load it from. 
 --jack9966 wrapped refType and stacknum together in 'data VarAddress' but i didnt
-cgVariableAccess :: Lvalue -> (Bool, BaseType, Int)
+cgVariableAccess :: Lvalue -> CodeGen (Bool, BaseType, Int)
 cgGetVariableType LId pos id = do
     (isReference, goatType, slot) <- getVariable id
     if isReference then do

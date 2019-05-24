@@ -236,7 +236,7 @@ cgStatement (Write _ expr) = cgWriteStatement expr
 cgStatement (If _ expr stmts) = cgIfStatement expr stmts
 cgStatement (IfElse _ expr stmts1 stmts2) = cgIfElseStatement expr stmts1 stmts2
 cgStatement (While _ expr stmts) = cgWhileStatement expr stmts
-
+cgStatement otherExpr = error ("do not use this statement " ++ (show otherExpr))
 
 cgWriteStatement :: Expr -> Codegen ()
 cgWriteStatement expr = do
@@ -319,26 +319,26 @@ cgExpression (BoolCon _ bool) = do
     case bool of
         True      -> writeInstruction "int_const"  [showReg reg, "1"]
         False     -> writeInstruction "int_const"  [showReg reg, "0"]
+    putRegType reg (Base BoolType)
     return (reg, BoolType)
 cgExpression (IntCon _ int) = do
     reg <- nextRegister
     writeInstruction "int_const"  [showReg reg, show int]
+    putRegType reg (Base IntType)
     return (reg, IntType)
 cgExpression (FloatCon _ float) = do
     reg <- nextRegister
     writeInstruction "real_const" [showReg reg, show float]
+    putRegType reg (Base FloatType)
     return (reg, FloatType)
 cgExpression (StrCon _ str) = do
     reg <- nextRegister
     writeInstruction "string_const" [showReg reg, show str]
+    putRegType reg (Base StringType)
     return (reg, StringType)
--- -- var access
--- cgExpression (Id _ ident) = do
---     typ <- variableType ident
---     reg <- nextRegister
---     loadVariable reg ident
---     return (reg, typ)
--- sign op
+
+-- unary operators
+-- UnaryMinus Pos Expr
 cgExpression (UnaryMinus _ expr) = do
     (reg, typ) <- cgExpression expr
     func <- case typ of
@@ -347,7 +347,7 @@ cgExpression (UnaryMinus _ expr) = do
         BoolType -> error $ "expected integer or real, found boolean"
     writeInstruction func [showReg reg, showReg reg]
     return (reg, typ)
--- not op
+-- Not Pos Expr
 cgExpression (Not _ expr) = do
     (reg, typ) <- cgExpression expr
     case typ of
@@ -401,11 +401,13 @@ cgExpression (Id _ ident) = do
             do
                 reg <- nextRegister
                 writeInstruction "load" [showReg reg, show addr]
+                putRegType reg (Base btype)
                 return (reg, btype)
         (True, Base btype)  -> 
             do
                 reg <- nextRegister
                 writeInstruction "load_indirect" [showReg reg, show addr]
+                putRegType reg (Base btype)
                 return (reg, btype)
         _                   -> 
             error ("variable " ++ show ident ++ " cannot be loaded.") 

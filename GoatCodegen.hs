@@ -470,7 +470,7 @@ cgVariableAccess (LMatrixRef pos id expr1 expr2) = do
     writeInstruction "mul_int" [showReg r1, showReg r1, showReg reg1]
     writeInstruction "add_int" [showReg r1, showReg r1, showReg reg2]
     return (True, cgGetBaseType goatType, r1)
-
+-- TODO find a more elegant way to do this?
 getFstDimen :: GoatType -> Int
 getFstDimen (Matrix bt s1 s2) = s1
 getFstDimen _ = error "getFstDimen error"

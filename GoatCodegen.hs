@@ -33,7 +33,7 @@ instance Applicative Codegen where
 
 -- helper functions for operations on monad
 initState :: State
-initState = State 0 [] initSymbols (-1) (-1)
+initState = State (-1) [] initSymbols (-1) (-1)
 
 setRegister :: Reg -> Codegen ()
 setRegister r' = Codegen (\(State r c s sl l)
@@ -41,7 +41,7 @@ setRegister r' = Codegen (\(State r c s sl l)
 
 resetRegister :: Codegen Reg
 resetRegister = Codegen (\(State r c s sl l)
-    -> (0, State 0 c s sl l))
+    -> (0, State (-1) c s sl l))
 
 resetStack :: Codegen StackSlot
 resetStack = Codegen (\(State r c s sl l)
@@ -247,7 +247,7 @@ cgProcedure' args decls stmts = do
     size2 <- cgDeclarationPart decls
     -- generate function body
     cgPushStackFrame (size + size2)
-    cgStoreArg 1 0 args
+    cgStoreArg 0 0 args
     cgCompoundStatement stmts
     cgPopStackFrame (size + size2)
 --robin  

@@ -394,13 +394,21 @@ cgExpression (Rel _ relop expr1 expr2) = do
 -- Id Pos Ident
 -- getVariable :: String -> Codegen (Bool, BaseType, Int)
 cgExpression (Id _ ident) = do
-    reg <- nextRegister
-    (_, goattype, addr) <- getVariable ident
-    case goattype of 
-        Base btype -> do
-                      writeInstruction "load" [showReg reg, show addr]
-                      return (reg, btype)
-        _ -> error ("variable " ++ show ident ++ " cannot be loaded.") 
+    
+    (isRef, goattype, addr) <- getVariable ident
+    case (isRef, goattype) of 
+        (False, Base btype) -> 
+            do
+                reg <- nextRegister
+                writeInstruction "load" [showReg reg, show addr]
+                return (reg, btype)
+        (True, Base btype)  -> 
+            do
+                reg <- nextRegister
+                writeInstruction "load_indirect" [showReg reg, show addr]
+                return (reg, btype)
+        _                   -> 
+            error ("variable " ++ show ident ++ " cannot be loaded.") 
 
 -- Arithmetic expressions
 -- BinOpExp Pos Binop Expr Expr

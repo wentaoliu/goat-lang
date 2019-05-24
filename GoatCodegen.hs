@@ -467,33 +467,38 @@ cgGetBaseType (Matrix  bt num1 num2) = bt
 -- location is slotnum if its a value (bool=false) and register num if its a reference (bool=true)
 cgVariableAccess :: Lvalue -> Codegen (Bool, BaseType, Int)
 cgVariableAccess (LId pos id) = do
+    writeComment "Getting location of var"
     (isReference, goatType, slot) <- getVariable id
     if not isReference then do
-        -- var is a value and can be read directly from
+        -- var is a value and can be read directly from slot
         return (isReference, cgGetBaseType goatType, slot)
     else do
-        -- var is a reference, the returned 
+        -- var is a reference, the returned is a register containing the address
         r <- nextRegister
         writeInstruction "load" [showReg r, show slot]
         return (isReference, cgGetBaseType goatType, r)
 cgVariableAccess (LArrayRef pos id expr) = do
+    writeComment "Getting location of array element"
     (isReference, goatType, slot) <- getVariable id
     --stack slot chnges depending on array index. assumes getVariable returns the stacknum of index 0 in array
-    --maybe the expression should be evaluated. do we have any function for that?
     (reg, baseType) <- cgExpression expr
     r <- nextRegister
+    --putRegType r (Base IntType)
     -- put address of array[0] into r
     writeInstruction "load_address" [showReg r, show slot]
     -- increment address of array[0] by the value in reg (the expression)
     writeInstruction "sub_offset" [showReg r, showReg r, show reg]
     return (True, cgGetBaseType goatType, r)
 cgVariableAccess (LMatrixRef pos id expr1 expr2) = do
+    writeComment "getting location of matrix element"
     --assumes accessing array[8][3] from array[10][10] means the stack slot is &a[0] + (8*10)+3 
     (isReference, goatType, slot) <- getVariable id
     r1 <- nextRegister
+    --putRegType r (Base IntType)
     writeInstruction "load_address" [showReg r1, show slot]
     --get the size of the first dimension of the array
     r2 <- nextRegister
+    --putRegType r (Base IntType)
     writeComment "size of array fst dimension"
     writeInstruction "int_const" [showReg r2, show $ getFstDimen goatType]
     --evaluate the expressions. TODO check if they are int
@@ -504,6 +509,7 @@ cgVariableAccess (LMatrixRef pos id expr1 expr2) = do
     writeInstruction "add_int" [showReg r2, showReg r2, showReg reg2]
     writeInstruction "sub_offset" [showReg r1, showReg r1, showReg r2]
     return (True, cgGetBaseType goatType, r1)
+
 -- TODO find a more elegant way to do this?
 getFstDimen :: GoatType -> Int
 getFstDimen (Matrix bt s1 s2) = s1
@@ -513,9 +519,6 @@ cgIntToReal :: Reg -> Codegen ()
 cgIntToReal r = do
     writeInstruction "int_to_real" [showReg r, showReg r]
     putRegType r (Base FloatType) 
-
-    
-
 
 data Cast = NoNeed | CastLeft | CastRight
 needCastType :: BaseType -> BaseType -> Cast

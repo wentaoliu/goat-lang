@@ -488,14 +488,21 @@ cgVariableAccess (LArrayRef pos id expr) = do
     writeInstruction "sub_offset" [showReg r, showReg r, show reg]
     return (True, cgGetBaseType goatType, r)
 cgVariableAccess (LMatrixRef pos id expr1 expr2) = do
-    --assumes accessing array[8][3] from array[10][10] means  the stack slot is +83 or something like that 
+    --assumes accessing array[8][3] from array[10][10] means the stack slot is &a[0] + (8*10)+3 
     (isReference, goatType, slot) <- getVariable id
     r1 <- nextRegister
-    writeInstruction "int_const" [showReg r1, show $ getFstDimen goatType]
+    writeInstruction "load_address" [showReg r1, show slot]
+    --get the size of the first dimension of the array
+    r2 <- nextRegister
+    writeComment "size of array fst dimension"
+    writeInstruction "int_const" [showReg r2, show $ getFstDimen goatType]
+    --evaluate the expressions. TODO check if they are int
     (reg1, bt1) <- cgExpression expr1
     (reg2, bt2) <- cgExpression expr2
-    writeInstruction "mul_int" [showReg r1, showReg r1, showReg reg1]
-    writeInstruction "add_int" [showReg r1, showReg r1, showReg reg2]
+    --multiply and add to get the offset, apply the offset and return the address in the register
+    writeInstruction "mul_int" [showReg r2, showReg r2, showReg reg1]
+    writeInstruction "add_int" [showReg r2, showReg r2, showReg reg2]
+    writeInstruction "sub_offset" [showReg r1, showReg r1, showReg r2]
     return (True, cgGetBaseType goatType, r1)
 -- TODO find a more elegant way to do this?
 getFstDimen :: GoatType -> Int

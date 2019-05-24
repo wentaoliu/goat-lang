@@ -432,6 +432,57 @@ cgExpression (BinOpExp _ binop expr1 expr2) = do
                      [showReg reg1, showReg reg1, showReg reg2]
     return (reg1, fromOpType optype)
 
+-- Arrays and Matrices
+-- As specified in Goat language description
+--     ident denotes a local variable (it cannot come from parameter passing)
+--     expr should have GoatType (Base IntType)
+cgExpression (ArrayRef _ ident expr) = do
+    (regRowIndex, btype) <- cgExpression expr
+    (isRef, gtype, addr) <- getVariable ident
+    case (btype, gtype) of
+        (IntType, Array abtype _) ->
+            do
+            regAddr <- nextRegister
+            writeInstruction "load_address" [showReg regAddr, show addr]
+            writeInstruction "sub_offset" [showReg regAddr, showReg regAddr,
+                                           showReg regRowIndex]
+            writeInstruction "load_indirect" [showReg regAddr, showReg regAddr]
+            putRegType regAddr (Base abtype)
+            return (regAddr, abtype)
+        _  ->
+            error ("Index [" ++ (show expr) ++ "] of array " ++ (show ident) ++
+                  " cannot be loaded.")
+            
+cgExpression (MatrixRef _ ident rowExpr colExpr) = do
+    (regRowIndex, rowbtype) <- cgExpression rowExpr
+    (regColIndex, colbtype) <- cgExpression colExpr
+    (isRef, gtype, addr) <- getVariable ident -- isRef is always false
+    case (rowbtype, colbtype, gtype) of
+        (IntType, IntType, Matrix mbtype _ _) ->
+            do
+            regAddr <- nextRegister
+            writeInstruction "load_address" [showReg regAddr, show addr]
+            flattenMatrixIndex regRowIndex regColIndex gtype
+            writeInstruction "sub_offset" [showReg regAddr, showReg regAddr,
+                                           showReg regRowIndex]
+            writeInstruction "load_indirect" [showReg regAddr, showReg regAddr]
+            putRegType regAddr (Base mbtype)
+            return (regAddr, mbtype)
+        _  ->
+            error ("Index [" ++ (show rowExpr) ++ ", " ++ (show colExpr) ++
+                   "] of matrix " ++ (show ident) ++ " cannot be loaded.")
+
+flattenMatrixIndex :: Reg -> Reg -> GoatType -> Codegen ()
+flattenMatrixIndex regRowIndex regColIndex (Matrix mbtype rows cols) = do
+    -- flattened index = rowIndex * #cols + colIndex
+    regCols <- nextRegister -- (Base IntType)
+    writeInstruction "int_const" [show regCols, show cols]
+    putRegType regCols (Base IntType)
+    writeInstruction "mul_int" [show regRowIndex, show regRowIndex,
+                                show regCols]
+    writeInstruction "add_int" [show regRowIndex, show regRowIndex,
+                                show regColIndex]
+    -- return ()
 
 -- data OperatorType = IntOp | RealOp
 data OpType = OpType BaseType

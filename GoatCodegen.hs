@@ -403,27 +403,29 @@ cgExpression (UnaryMinus _ expr) = do
         BoolType -> error $ "expected integer or real, found boolean"
     writeInstruction func [showReg reg, showReg reg]
     return (reg, typ)
+
 -- Not Pos Expr
 cgExpression (Not _ expr) = do
     (reg, typ) <- cgExpression expr
     case typ of
         BoolType -> writeInstruction "not" [showReg reg, showReg reg]
         otherwise -> error $ "expected bool, found " ++ show typ
-    return (reg, typ)
+    return (reg, BoolType)
+
 -- And | Or
 cgExpression (And _ expr1 expr2) = do
     (reg1, typ1) <- cgExpression expr1
     (reg2, typ2) <- cgExpression expr2
     cgPrepareLogical reg1 reg2
     writeInstruction "and" [showReg reg1, showReg reg1, showReg reg2]
-    return (reg1, typ1) -- (typ1 == typ2 == BoolType)
+    return (reg1, BoolType) -- (typ1 == typ2 == BoolType)
 
 cgExpression (Or _ expr1 expr2) = do
     (reg1, typ1) <- cgExpression expr1
     (reg2, typ2) <- cgExpression expr2
     cgPrepareLogical reg1 reg2
     writeInstruction "or" [showReg reg1, showReg reg1, showReg reg2]
-    return (reg1, typ1) -- (typ1 == typ2 == BoolType)
+    return (reg1, BoolType) -- (typ1 == typ2 == BoolType)
 
 -- Rel Pos Relop Expr Expr
 cgExpression (Rel _ relop expr1 expr2) = do
@@ -444,7 +446,8 @@ cgExpression (Rel _ relop expr1 expr2) = do
             OpType FloatType -> "real"
     writeInstruction (relopInstruction ++ relopType)
                      [showReg reg1, showReg reg1, showReg reg2]
-    return (reg1, fromOpType optype)
+    -- return (reg1, fromOpType optype)
+    return (reg1, BoolType)
 
 -- Id Pos Ident
 -- getVariable :: String -> Codegen (Bool, BaseType, Int)
@@ -571,7 +574,7 @@ cgPrepareLogical r1 r2 = do
     case (t1, t2) of
         (Base BoolType, Base BoolType) -> return ()
         _ -> error $ "logical operation cannot be done between " ++
-                     (show t1) ++ " and " ++ (show t2)
+                     (show t1) ++ " " ++ (show r1) ++ " and " ++ (show t2) ++ " " ++ (show r2)
 
 cgPrepareComparison :: Reg -> Reg -> Codegen (OpType)
 cgPrepareComparison = cgPrepareArithmetic

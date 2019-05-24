@@ -175,10 +175,53 @@ cgProgram (Program procs) = do
     writeCode "    call proc_main"
     writeCode "    halt"
     -- put all procedures into symbol table
-    -- cgJoin $ map cgPrepareProcedure procs
+    
+    --robin
+    cgJoin $ map cgPrepareProcedure procs
+       
+    --robin
+    
     -- -- all procedures
     cgJoin $ map cgProcedure procs
     writeCode "    return"
+
+    
+
+--robin
+cgPrepareProcedure :: Procedure -> Codegen ()
+cgPrepareProcedure (Procedure _ ident args _ _) = do
+    putProcedure ident (bareParameters args)
+
+    
+bareParameters :: [FormalArgSpec] -> [(Bool, GoatType)]
+bareParameters args = map bareParameters' args
+
+bareParameters' :: FormalArgSpec -> (Bool, GoatType)
+bareParameters' (FormalArgSpec _ Val typ _) = (False, Base typ)
+bareParameters' (FormalArgSpec _ Ref typ _) = (True, Base typ)
+            
+            
+-- generate code to put procedure arguments into stack slots
+cgStoreArg :: Reg -> StackSlot -> [FormalArgSpec] -> Codegen ()
+cgStoreArg _ _ [] = return ()
+cgStoreArg r sl (_:xs) = do
+    writeInstruction "store" [show sl, showReg r]
+    cgStoreArg (r+1) (sl+1) xs
+
+cgFormalParameterList :: [FormalArgSpec] -> Codegen (MemSize)
+cgFormalParameterList args = do
+    writeComment "formal parameter section"
+
+    cgFoldr (+) 0 $ map cgProcessSection args
+
+cgProcessSection :: FormalArgSpec -> Codegen (MemSize)
+cgProcessSection (FormalArgSpec pos Val baseType ident) = cgDeclaration False (Decl pos ident (Base baseType))
+cgProcessSection (FormalArgSpec pos Ref baseType ident) = cgDeclaration True (Decl pos ident (Base baseType))
+--robin
+
+    
+    
+    
 
 -- generate code for each procedure
 cgProcedure :: Procedure -> Codegen()
@@ -196,6 +239,17 @@ cgProcedure' [] decls stmts = do
     cgPushStackFrame size
     cgCompoundStatement stmts
     cgPopStackFrame size
+--robin    
+cgProcedure' args decls stmts = do
+    -- prepare variables and params
+    size <- cgFormalParameterList args
+    size2 <- cgDeclarationPart decls
+    -- generate function body
+    cgPushStackFrame (size + size2)
+    cgStoreArg 1 0 args
+    cgCompoundStatement stmts
+    cgPopStackFrame (size + size2)
+--robin  
 
 
 -- generate code for variable declaration part, return
@@ -211,7 +265,22 @@ cgDeclaration :: Bool -> Decl -> Codegen (MemSize)
 cgDeclaration varness (Decl _ ident typ) = do
     writeComment ("declaration " ++ ident)
     case typ of
-        -- ArrayTypeDeno`ter arrayType -> cgArrayType i arrayType
+        -- ArrayTypeDenoter arrayType -> cgArrayType i arrayType
+        
+        --robin
+        Array baseType n -> do
+            sl <- nextSlotMulti n
+            -- putVariable stores the slot number of the beginning of array
+            putVariable ident (varness, typ, sl)
+            return n
+        Matrix baseType m n -> do
+            let size = m*n
+            sl <- nextSlotMulti size
+            -- putVariable stores the slot number of the beginning of matrix
+            putVariable ident (varness, typ, sl)
+            return size
+        --robin
+        
         Base baseType -> do
             sl <- nextSlot
             putVariable ident (varness, typ, sl) 

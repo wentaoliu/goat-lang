@@ -336,7 +336,7 @@ cgInitFloat sl 0 = return ()
 cgInitFloat sl size = do
     writeInstruction "real_const"  ["r0", "0.0"]
     writeInstruction "store" [show sl, "r0"]
-    cgInitInt (sl+1) (size-1)
+    cgInitFloat (sl+1) (size-1)
 
 
 -- generate code to handle parameters in a procedure

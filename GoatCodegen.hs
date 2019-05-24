@@ -362,14 +362,18 @@ cgExpression (And _ expr1 expr2) = do
     (reg2, typ2) <- cgExpression expr2
     cgPrepareLogical reg1 reg2
     writeInstruction "and" [showReg reg1, showReg reg1, showReg reg2]
-    return (reg1, BoolType) -- (typ1 == typ2 == BoolType)
+    -- (typ1 == typ2 == BoolType)
+    putRegType reg1 (Base BoolType)
+    return (reg1, BoolType)
 
 cgExpression (Or _ expr1 expr2) = do
     (reg1, typ1) <- cgExpression expr1
     (reg2, typ2) <- cgExpression expr2
     cgPrepareLogical reg1 reg2
     writeInstruction "or" [showReg reg1, showReg reg1, showReg reg2]
-    return (reg1, BoolType) -- (typ1 == typ2 == BoolType)
+    -- (typ1 == typ2 == BoolType)
+    putRegType reg1 (Base BoolType)
+    return (reg1, BoolType) 
 
 -- Rel Pos Relop Expr Expr
 cgExpression (Rel _ relop expr1 expr2) = do
@@ -390,6 +394,7 @@ cgExpression (Rel _ relop expr1 expr2) = do
             OpType FloatType -> "real"
     writeInstruction (relopInstruction ++ relopType)
                      [showReg reg1, showReg reg1, showReg reg2]
+    putRegType reg1 (Base BoolType)
     -- return (reg1, fromOpType optype)
     return (reg1, BoolType)
 

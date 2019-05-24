@@ -301,6 +301,17 @@ cgWhileStatement expr stmts = do
     writeLabel afterLabel
 
 
+
+---------------------------
+-- zeyu's part: expressions
+---------------------------
+
+-- data ExprType = SimpleExprType
+--               | LogicExprType 
+--               | RelExprType 
+--               | IdExprType
+--               | ArithExprType
+
 cgExpression :: Expr -> Codegen (Reg, BaseType)
 -- const access
 cgExpression (BoolCon _ bool) = do
@@ -343,3 +354,141 @@ cgExpression (Not _ expr) = do
         BoolType -> writeInstruction "not" [showReg reg, showReg reg]
         otherwise -> error $ "expected bool, found " ++ show typ
     return (reg, typ)
+
+-- And | Or
+cgExpression (And _ expr1 expr2) = do
+    (reg1, typ1) <- cgExpression expr1
+    (reg2, typ2) <- cgExpression expr2
+    cgPrepareLogical reg1 reg2
+    writeInstruction "and" [showReg reg1, showReg reg1, showReg reg2]
+    return (reg1, typ1) -- (typ1 == typ2 == BoolType)
+
+cgExpression (Or _ expr1 expr2) = do
+    (reg1, typ1) <- cgExpression expr1
+    (reg2, typ2) <- cgExpression expr2
+    cgPrepareLogical reg1 reg2
+    writeInstruction "or" [showReg reg1, showReg reg1, showReg reg2]
+    return (reg1, typ1) -- (typ1 == typ2 == BoolType)
+
+-- Rel Pos Relop Expr Expr
+cgExpression (Rel _ relop expr1 expr2) = do
+    (reg1, typ1) <- cgExpression expr1
+    (reg2, typ2) <- cgExpression expr2
+    optype <- cgPrepareComparison reg1 reg2
+    let relopInstruction = 
+            case relop of
+            Op_eq -> "cmp_eq_"
+            Op_ne -> "cmp_ne_"
+            Op_ge -> "cmp_ge_"
+            Op_le -> "cmp_le_"
+            Op_gt -> "cmp_gt_"
+            Op_lt -> "cmp_lt_"
+    let relopType = 
+            case optype of 
+            OpType IntType -> "int"
+            OpType FloatType -> "real"
+    writeInstruction (relopInstruction ++ relopType)
+                     [showReg reg1, showReg reg1, showReg reg2]
+    return (reg1, fromOpType optype)
+
+-- Id Pos Ident
+-- getVariable :: String -> Codegen (Bool, BaseType, Int)
+cgExpression (Id _ ident) = do
+    reg <- nextRegister
+    (_, goattype, addr) <- getVariable ident
+    case goattype of 
+        Base btype -> do
+                      writeInstruction "load" [showReg reg, show addr]
+                      return (reg, btype)
+        _ -> error ("variable " ++ show ident ++ " cannot be loaded.") 
+
+-- Arithmetic expressions
+-- BinOpExp Pos Binop Expr Expr
+cgExpression (BinOpExp _ binop expr1 expr2) = do
+    (reg1, typ1) <- cgExpression expr1
+    (reg2, typ2) <- cgExpression expr2
+    optype <- cgPrepareArithmetic reg1 reg2
+    let binopInstruction = 
+            case binop of
+            Op_add -> "add_"
+            Op_sub -> "sub_"
+            Op_mul -> "mul_"
+            Op_div -> "div_"
+    let binopType = 
+            case optype of 
+            OpType IntType -> "int"
+            OpType FloatType -> "real"
+    writeInstruction (binopInstruction ++ binopType)
+                     [showReg reg1, showReg reg1, showReg reg2]
+    return (reg1, fromOpType optype)
+
+
+-- data OperatorType = IntOp | RealOp
+data OpType = OpType BaseType
+
+-- deconstruct OpType to get BaseType
+fromOpType :: OpType -> BaseType
+fromOpType (OpType b) = b
+
+-- check types of both operands, do type casting if necessary, report final type
+cgPrepareArithmetic :: Reg -> Reg -> Codegen (OpType)
+cgPrepareArithmetic r1 r2 = do
+    t1 <- getRegType r1
+    t2 <- getRegType r2
+    case (t1, t2) of
+        (Base FloatType, Base FloatType) -> return $ OpType FloatType
+        (Base IntType,   Base FloatType) -> do
+                                            cgIntToReal r1
+                                            return $ OpType FloatType
+        (Base FloatType, Base IntType  ) -> do
+                                            cgIntToReal r2
+                                            return $ OpType FloatType
+        (Base IntType,   Base IntType  ) -> return $ OpType IntType
+        _ -> error $ "arithmetic/comparision cannot be done between " ++
+                     (show t1) ++ " and " ++ (show t2)
+
+-- helper function for cgPrepareArithmetic
+cgIntToReal :: Reg -> Codegen ()
+cgIntToReal reg = do
+    writeInstruction "int_to_real" [showReg reg, showReg reg]
+    putRegType reg (Base FloatType)
+
+
+-- check that logical expressions involve two booleans
+cgPrepareLogical :: Reg -> Reg -> Codegen ()
+cgPrepareLogical r1 r2 = do
+    t1 <- getRegType r1
+    t2 <- getRegType r2
+    case (t1, t2) of
+        (Base BoolType, Base BoolType) -> return ()
+        _ -> error $ "logical operation cannot be done between " ++
+                     (show t1) ++ " and " ++ (show t2)
+
+cgPrepareComparison :: Reg -> Reg -> Codegen (OpType)
+cgPrepareComparison = cgPrepareArithmetic
+
+
+
+-- reserve registers for arguments to be passed
+-- cgAllocateRegs :: [ASTExpression] -> Codegen ()
+-- cgAllocateRegs [] = return ()
+-- cgAllocateRegs (_:xs) = nextRegister >> (cgAllocateRegs xs)
+
+-- -- generate code to pass variables according to varnesses that callee specifies
+-- cgPassArgument
+--     :: Reg -> [ASTExpression] -> [(Bool, ASTTypeDenoter)] -> Codegen ()
+-- cgPassArgument _ (_:_) [] = error "num of arguments incorrect"
+-- cgPassArgument _ [] (_:_) = error "num of arguments incorrect"
+-- cgPassArgument _ [] [] = return ()
+-- cgPassArgument r (a:as) ((v, vt):ps) = do
+--     if v then
+--         -- pass by reference
+--         cgVariableReference a vt r
+--     else do
+--         -- pass by value
+--         cgExpression a r
+--         at <- getRegType r
+--         cgPrepareAssignment vt (r, at)
+--     cgPassArgument (r+1) as ps
+
+

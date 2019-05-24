@@ -2,6 +2,7 @@ module GoatCodegen where
 
 import GoatAST
 import GoatSymTable
+import PrettyPrinter
 import qualified Data.Map as Map
 import Control.Monad
 
@@ -179,7 +180,6 @@ cgProgram (Program procs) = do
     cgJoin $ map cgPrepareProcedure procs
     -- -- all procedures
     cgJoin $ map cgProcedure procs
-    writeCode "    return"
 
 --robin
 cgPrepareProcedure :: Procedure -> Codegen ()
@@ -222,14 +222,17 @@ cgProcedure (Procedure pos ident args decls stmts) = do
     resetVariables
     resetStack
     cgProcedure' args decls stmts
+    
 
 cgProcedure' :: [FormalArgSpec] -> [Decl] -> [Stmt] -> Codegen ()
 cgProcedure' [] decls stmts = do
     size <- cgDeclarationPart decls
     -- generate function body
     cgPushStackFrame size
+    cgInitVariablePart decls
     cgCompoundStatement stmts
     cgPopStackFrame size
+    writeCode "    return"
 --robin    
 cgProcedure' args decls stmts = do
     -- prepare variables and params
@@ -238,8 +241,10 @@ cgProcedure' args decls stmts = do
     -- generate function body
     cgPushStackFrame (size + size2)
     cgStoreArg 0 0 args
+    cgInitVariablePart decls
     cgCompoundStatement stmts
     cgPopStackFrame (size + size2)
+    writeCode "    return"
 --robin  
 
 
@@ -275,16 +280,87 @@ cgDeclaration varness (Decl _ ident typ) = do
             return size
         --robin
 
+-- initialize all variables in declaration part
+cgInitVariablePart  :: [Decl] -> Codegen()
+cgInitVariablePart  decls = do
+    cgJoin $ map cgInitVariable decls
+    
+cgInitVariable :: Decl -> Codegen()
+cgInitVariable (Decl _ ident typ) = do
+    (_, _, sl) <- getVariable ident
+    case typ of
+        Base baseType -> do
+            case baseType of
+                BoolType -> do 
+                    writeComment ("initialize bool val " ++ ident)
+                    cgInitInt sl 1
+                IntType -> do
+                    writeComment ("initialize int val " ++ ident)
+                    cgInitInt sl 1
+                FloatType -> do
+                    writeComment ("initialize float val " ++ ident)
+                    cgInitFloat sl 1
+        Array baseType n -> do
+            case baseType of
+                BoolType -> do
+                    writeComment ("initialize bool val " ++ ident ++ "[" ++ show n ++ "]")
+                    cgInitInt sl n
+                IntType -> do
+                    writeComment ("initialize int val " ++ ident ++ "[" ++ show n ++ "]")
+                    cgInitInt sl n
+                FloatType -> do
+                    writeComment ("initialize float val " ++ ident ++ "[" ++ show n ++ "]")
+                    cgInitFloat sl n
+        Matrix baseType m n -> do
+            let size = m*n
+            case baseType of
+                BoolType -> do
+                    writeComment ("initialize bool val "  ++ ident ++ "[" ++ show m ++ "," ++ show n ++ "]")
+                    cgInitInt sl size
+                IntType -> do
+                    writeComment ("initialize int val "  ++ ident ++ "[" ++ show m ++ "," ++ show n ++ "]")
+                    cgInitInt sl size
+                FloatType -> do
+                    writeComment ("initialize float val "  ++ ident ++ "[" ++ show m ++ "," ++ show n ++ "]")
+                    cgInitFloat sl size
+
+
+-- initialize int and bool variable, array and matrix
+cgInitInt :: Int -> Int -> Codegen()
+cgInitInt sl 0 = return ()
+cgInitInt sl size = do
+    writeInstruction "int_const"  ["r0", "0"]
+    writeInstruction "store" [show sl, "r0"]
+    cgInitInt (sl+1) (size-1)
+
+-- initialize float variable, array and matrix
+cgInitFloat :: Int -> Int -> Codegen()
+cgInitFloat sl 0 = return ()
+cgInitFloat sl size = do
+    writeInstruction "real_const"  ["r0", "0.0"]
+    writeInstruction "store" [show sl, "r0"]
+    cgInitFloat (sl+1) (size-1)
+
+
+-- generate code to handle parameters in a procedure
+cgFormalArgDeclaration :: Bool -> Decl -> Codegen (MemSize)
+cgFormalArgDeclaration varness (Decl _ ident typ) = do
+    case typ of
+        Base baseType -> do
+            sl <- nextSlot
+            putVariable ident (varness, typ, sl) 
+            return 1 -- all primitives have size 1
+
 
 cgCompoundStatement :: [Stmt] -> Codegen ()
 cgCompoundStatement stmt = do
-    writeComment "compound statement"
     cgCompoundStatement' stmt
 
 cgCompoundStatement' :: [Stmt] -> Codegen ()
 cgCompoundStatement' [] = return ()
 cgCompoundStatement' (x:xs) = do
-    r <- resetRegister
+    resetRegister
+    writeComment $ (ppStmt x)!!0
     cgStatement x
     cgCompoundStatement' xs
 
@@ -295,26 +371,89 @@ cgStatement (IfElse _ expr stmts1 stmts2) = cgIfElseStatement expr stmts1 stmts2
 cgStatement (While _ expr stmts) = cgWhileStatement expr stmts
 cgStatement (Assign _ lvalue expr) = cgAssignmentStatement lvalue expr
 cgStatement (Read _ lvalue) = cgReadStatement lvalue
--- cgStatement (ProcCall _ ident exprs) = cgProcCallStatement ident exprs
+cgStatement (ProcCall _ ident exprs) = cgProcCallStatement ident exprs
 
--- -- generate code to call a procedure. Put arguments in registers starting at r0
--- cgProcCallStatement :: Ident -> [Expr] -> Codegen ()
--- cgProcCallStatement (p, paramList) = do
---     formalParameters <- getProcedure p
---     case paramList of
---         Nothing -> return ()
---         Just arguments -> do
---             -- prepare registers
---             resetRegister
---             cgAllocateRegs arguments
---             -- put in arguments
---             cgPassArgument 1 arguments formalParameters
---     writeInstruction "call" [p]
+-- generate code to call a procedure. Put arguments in registers starting at r0
+cgProcCallStatement :: Ident -> [Expr] -> Codegen ()
+cgProcCallStatement ident argExprs = do
+    params <- getProcedure ident
+    if length params /= length argExprs
+        then error $ "expected " ++ (show $ length params) ++ " parameter(s), found " ++ (show $ length argExprs)
+        else cgArgumentList 0 params argExprs
+    writeInstruction "call" ["proc_" ++ ident]
+
+-- evaluate and move parameters to registers
+cgArgumentList :: Reg ->[(Bool, GoatType)] -> [Expr] -> Codegen ()
+cgArgumentList _ _ [] = return ()
+cgArgumentList reg ((isRef, typ):ps) (arg: args) = do
+    setRegister reg
+    if isRef
+        then do
+            -- pass by reference
+            case arg of
+                Id _ ident -> do
+                    (_, typ', _) <- getVariable ident
+                    if typ' == typ then cgLoadAddress reg arg
+                    else error $ "expected " ++ show typ ++ ", found " ++ show typ'
+                ArrayRef _ ident i -> do 
+                    (_, typ', _) <- getVariable ident
+                    if typ' == typ then cgLoadAddress reg arg
+                    else error $ "expected " ++ show typ ++ ", found " ++ show typ'
+                MatrixRef _ ident i j -> do
+                    (_, typ', _) <- getVariable ident
+                    if typ' == typ then cgLoadAddress reg arg
+                    else error $ "expected " ++ show typ ++ ", found " ++ show typ'
+                otherwise -> error "expected id"
+        else do
+            -- pass by value
+            (reg', typ') <- cgExpression arg
+            case needCastType (cgGetBaseType typ) typ' of
+                CastLeft  -> error "expected integer, found real"
+                CastRight -> writeInstruction "int_to_real" [showReg reg, showReg reg']
+                NoNeed    -> if reg == reg' 
+                                then return ()
+                                else writeInstruction "move" [showReg reg, showReg reg']
+    cgArgumentList (reg+1) ps args
+
+
+cgLoadAddress :: Reg -> Expr -> Codegen ()
+cgLoadAddress reg (Id _ id) = do
+    (isRef, _, slot) <- getVariable id
+    if isRef
+        then writeInstruction "load" [showReg reg, show slot]
+        else writeInstruction "load_address" [showReg reg, show slot]
+cgLoadAddress reg (ArrayRef _ id expr) = do
+    (reg', typ') <- cgExpression expr
+    if typ' /= IntType
+        then error $ "expected int as array index"
+        else return ()
+    (isRef, typ, slot) <- getVariable id
+    case typ of
+        Array _ _ -> do
+            writeInstruction "load_address" [showReg reg, show slot]
+            writeInstruction "sub_offset" [showReg reg, showReg reg,
+                                           showReg reg']
+        otherwise -> error $ "expected arrary variable"
+cgLoadAddress reg (MatrixRef _ id expr1 expr2) = do
+    (reg1, typ1) <- cgExpression expr1
+    (reg2, typ2) <- cgExpression expr2
+    if typ1 /= IntType || typ2 /= IntType
+        then error $ "expected int as matrix index"
+        else return ()
+    (isRef, typ, slot) <- getVariable id
+    case typ of
+        Matrix _ _ _ -> do
+            writeInstruction "load_address" [showReg reg, show slot]
+            flattenMatrixIndex reg1 reg2 typ
+            writeInstruction "sub_offset" [showReg reg, showReg reg,
+                                           showReg reg1]
+        otherwise -> error $ "expected matrix variable"
+
+
 
 -- generate code to read input from console
 cgReadStatement :: Lvalue -> Codegen ()
 cgReadStatement var = do
-    writeComment "read statement"
     (ref, t, sl) <- cgVariableAccess var
     let name = case t of
             IntType     -> "read_int"
@@ -328,26 +467,18 @@ cgReadStatement var = do
 
 cgAssignmentStatement :: Lvalue -> Expr -> Codegen ()
 cgAssignmentStatement var expr = do
-    writeComment "assign statement"
-    (_, ltype, addr) <- cgVariableAccess var
+    (isRef, ltype, addr) <- cgVariableAccess var
     (rvalue, rtype) <- cgExpression expr
     case needCastType ltype rtype of
         CastRight -> writeInstruction "int_to_real" [showReg rvalue, showReg rvalue]
         CastLeft  -> error $ "expected integer, found real"
         NoNeed    -> return ()
-    writeInstruction "store" [show addr, showReg rvalue]
-
--- -- helper function for looking up the type of a variable
--- cgGetVariableAccess :: Lvalue -> Codegen (BaseType, Int)
--- cgGetVariableAccess (LId _ ident) = do
---     (_, (Base t), sl) <- getVariable ident
---     return (t, sl)
--- cgGetVariableAccess (LArrayRef _ ident _) = do
---     (_, (Array t _), sl) <- getVariable ident
---     return (t, sl)
--- cgGetVariableAccess (LMatrixRef _ ident _ _) = do
---     (_, (Matrix t _ _), sl) <- getVariable ident
---     return (t, sl)
+    -- writeInstruction "store" [show addr, showReg rvalue]
+    if isRef 
+        then do
+            writeInstruction "store_indirect" [showReg addr, showReg rvalue]
+        else do
+            writeInstruction "store" [show addr, showReg rvalue]
 
 
 cgGetVariableType :: Lvalue -> Codegen (BaseType)
@@ -421,7 +552,6 @@ cgIntToReal r = do
 
 cgWriteStatement :: Expr -> Codegen ()
 cgWriteStatement expr = do
-    writeComment "write"
     (reg, typ) <- cgExpression expr
     func <- case typ of
         IntType     -> return "print_int"
@@ -436,7 +566,6 @@ cgWriteStatement expr = do
 
 cgIfStatement :: Expr -> [Stmt] -> Codegen ()
 cgIfStatement expr stmts = do
-    writeComment "begin if"
     beginLabel <- nextLabel
     afterLabel <- nextLabel
     -- expression
@@ -447,12 +576,11 @@ cgIfStatement expr stmts = do
     writeLabel beginLabel
     cgCompoundStatement stmts
     writeLabel afterLabel
-    writeComment "end if"
+    writeComment "fi"
 
 
 cgIfElseStatement :: Expr -> [Stmt] -> [Stmt] -> Codegen()
 cgIfElseStatement expr stmts1 stmts2 = do
-    writeComment "begin if-else"
     beginLabel <- nextLabel
     elseLabel <- nextLabel
     afterLabel <- nextLabel
@@ -465,15 +593,15 @@ cgIfElseStatement expr stmts1 stmts2 = do
     cgCompoundStatement stmts1
     writeInstruction "branch_uncond" [afterLabel]
     -- else part
+    writeComment "else"
     writeLabel elseLabel
     cgCompoundStatement stmts2
     writeLabel afterLabel
-    writeComment "end if-else"
+    writeComment "fi"
 
 
 cgWhileStatement :: Expr -> [Stmt] -> Codegen ()
 cgWhileStatement expr stmts = do
-    writeComment "begin while"
     beginLabel <- nextLabel
     whileLabel <- nextLabel
     afterLabel <- nextLabel
@@ -487,52 +615,7 @@ cgWhileStatement expr stmts = do
     cgCompoundStatement stmts
     writeInstruction "branch_uncond" [beginLabel]
     writeLabel afterLabel
-    writeComment "end while"
-
-
-cgExpression :: Expr -> Codegen (Reg, BaseType)
--- const access
-cgExpression (BoolCon _ bool) = do
-    reg <- nextRegister
-    case bool of
-        True      -> writeInstruction "int_const"  [showReg reg, "1"]
-        False     -> writeInstruction "int_const"  [showReg reg, "0"]
-    return (reg, BoolType)
-cgExpression (IntCon _ int) = do
-    reg <- nextRegister
-    writeInstruction "int_const"  [showReg reg, show int]
-    return (reg, IntType)
-cgExpression (FloatCon _ float) = do
-    reg <- nextRegister
-    writeInstruction "real_const" [showReg reg, show float]
-    return (reg, FloatType)
-cgExpression (StrCon _ str) = do
-    reg <- nextRegister
-    writeInstruction "string_const" [showReg reg, show str]
-    return (reg, StringType)
--- -- var access
--- cgExpression (Id _ ident) = do
---     typ <- variableType ident
---     reg <- nextRegister
---     loadVariable reg ident
---     return (reg, typ)
--- sign op
-cgExpression (UnaryMinus _ expr) = do
-    (reg, typ) <- cgExpression expr
-    func <- case typ of
-        IntType -> return "neg_int"
-        FloatType -> return "neg_real"
-        BoolType -> error $ "expected integer or real, found boolean"
-    writeInstruction func [showReg reg, showReg reg]
-    return (reg, typ)
--- not op
-cgExpression (Not _ expr) = do
-    (reg, typ) <- cgExpression expr
-    case typ of
-        BoolType -> writeInstruction "not" [showReg reg, showReg reg]
-        otherwise -> error $ "expected bool, found " ++ show typ
-    return (reg, typ)
-
+    writeComment "od"
 
 data Cast = NoNeed | CastLeft | CastRight
 needCastType :: BaseType -> BaseType -> Cast
@@ -544,3 +627,233 @@ needCastType FloatType  IntType   = CastRight
 needCastType FloatType  BoolType  = error $ "expected real, found boolean"
 needCastType BoolType   typ       = error $ "expected boolean, found " ++ show typ
 needCastType IntType    typ       = error $ "expected integer, found " ++ show typ
+
+---------------------------
+-- zeyu's part: expressions
+---------------------------
+
+-- data ExprType = SimpleExprType
+--               | LogicExprType 
+--               | RelExprType 
+--               | IdExprType
+--               | ArithExprType
+
+cgExpression :: Expr -> Codegen (Reg, BaseType)
+-- const access
+cgExpression (BoolCon _ bool) = do
+    reg <- nextRegister
+    case bool of
+        True      -> writeInstruction "int_const"  [showReg reg, "1"]
+        False     -> writeInstruction "int_const"  [showReg reg, "0"]
+    putRegType reg (Base BoolType)
+    return (reg, BoolType)
+cgExpression (IntCon _ int) = do
+    reg <- nextRegister
+    writeInstruction "int_const"  [showReg reg, show int]
+    putRegType reg (Base IntType)
+    return (reg, IntType)
+cgExpression (FloatCon _ float) = do
+    reg <- nextRegister
+    writeInstruction "real_const" [showReg reg, show float]
+    putRegType reg (Base FloatType)
+    return (reg, FloatType)
+cgExpression (StrCon _ str) = do
+    reg <- nextRegister
+    writeInstruction "string_const" [showReg reg, "\"" ++ str ++ "\""]
+    putRegType reg (Base StringType)
+    return (reg, StringType)
+
+-- unary operators
+-- UnaryMinus Pos Expr
+cgExpression (UnaryMinus _ expr) = do
+    (reg, typ) <- cgExpression expr
+    func <- case typ of
+        IntType -> return "neg_int"
+        FloatType -> return "neg_real"
+        BoolType -> error $ "expected integer or real, found boolean"
+    writeInstruction func [showReg reg, showReg reg]
+    return (reg, typ)
+
+-- Not Pos Expr
+cgExpression (Not _ expr) = do
+    (reg, typ) <- cgExpression expr
+    case typ of
+        BoolType -> writeInstruction "not" [showReg reg, showReg reg]
+        otherwise -> error $ "expected bool, found " ++ show typ
+    return (reg, BoolType)
+
+-- And | Or
+cgExpression (And _ expr1 expr2) = do
+    (reg1, typ1) <- cgExpression expr1
+    (reg2, typ2) <- cgExpression expr2
+    cgPrepareLogical reg1 reg2
+    writeInstruction "and" [showReg reg1, showReg reg1, showReg reg2]
+    -- (typ1 == typ2 == BoolType)
+    putRegType reg1 (Base BoolType)
+    return (reg1, BoolType)
+
+cgExpression (Or _ expr1 expr2) = do
+    (reg1, typ1) <- cgExpression expr1
+    (reg2, typ2) <- cgExpression expr2
+    cgPrepareLogical reg1 reg2
+    writeInstruction "or" [showReg reg1, showReg reg1, showReg reg2]
+    -- (typ1 == typ2 == BoolType)
+    putRegType reg1 (Base BoolType)
+    return (reg1, BoolType) 
+
+-- Rel Pos Relop Expr Expr
+cgExpression (Rel _ relop expr1 expr2) = do
+    (reg1, typ1) <- cgExpression expr1
+    (reg2, typ2) <- cgExpression expr2
+    optype <- cgPrepareComparison reg1 reg2
+    let relopInstruction = 
+            case relop of
+            Op_eq -> "cmp_eq_"
+            Op_ne -> "cmp_ne_"
+            Op_ge -> "cmp_ge_"
+            Op_le -> "cmp_le_"
+            Op_gt -> "cmp_gt_"
+            Op_lt -> "cmp_lt_"
+    let relopType = 
+            case optype of 
+            OpType IntType -> "int"
+            OpType FloatType -> "real"
+    writeInstruction (relopInstruction ++ relopType)
+                     [showReg reg1, showReg reg1, showReg reg2]
+    putRegType reg1 (Base BoolType)
+    -- return (reg1, fromOpType optype)
+    return (reg1, BoolType)
+
+-- Id Pos Ident
+-- getVariable :: String -> Codegen (Bool, BaseType, Int)
+cgExpression (Id _ ident) = do
+    
+    (isRef, goattype, addr) <- getVariable ident
+    case (isRef, goattype) of 
+        (False, Base btype) -> 
+            do
+                reg <- nextRegister
+                writeInstruction "load" [showReg reg, show addr]
+                putRegType reg (Base btype)
+                return (reg, btype)
+        (True, Base btype)  -> 
+            do
+                reg <- nextRegister
+                writeInstruction "load_indirect" [showReg reg, show addr]
+                putRegType reg (Base btype)
+                return (reg, btype)
+        _                   -> 
+            error ("variable " ++ show ident ++ " cannot be loaded.") 
+
+-- Arithmetic expressions
+-- BinOpExp Pos Binop Expr Expr
+cgExpression (BinOpExp _ binop expr1 expr2) = do
+    (reg1, typ1) <- cgExpression expr1
+    (reg2, typ2) <- cgExpression expr2
+    optype <- cgPrepareArithmetic reg1 reg2
+    let binopInstruction = 
+            case binop of
+            Op_add -> "add_"
+            Op_sub -> "sub_"
+            Op_mul -> "mul_"
+            Op_div -> "div_"
+    let binopType = 
+            case optype of 
+            OpType IntType -> "int"
+            OpType FloatType -> "real"
+    writeInstruction (binopInstruction ++ binopType)
+                     [showReg reg1, showReg reg1, showReg reg2]
+    return (reg1, fromOpType optype)
+
+-- Arrays and Matrices
+-- As specified in Goat language description
+--     ident denotes a local variable (it cannot come from parameter passing)
+--     expr should have GoatType (Base IntType)
+cgExpression (ArrayRef _ ident expr) = do
+    (regRowIndex, btype) <- cgExpression expr
+    (isRef, gtype, addr) <- getVariable ident
+    case (btype, gtype) of
+        (IntType, Array abtype _) ->
+            do
+            regAddr <- nextRegister
+            writeInstruction "load_address" [showReg regAddr, show addr]
+            writeInstruction "sub_offset" [showReg regAddr, showReg regAddr,
+                                           showReg regRowIndex]
+            writeInstruction "load_indirect" [showReg regAddr, showReg regAddr]
+            putRegType regAddr (Base abtype)
+            return (regAddr, abtype)
+        _  ->
+            error ("Index [" ++ (show expr) ++ "] of array " ++ (show ident) ++
+                  " cannot be loaded.")
+            
+cgExpression (MatrixRef _ ident rowExpr colExpr) = do
+    (regRowIndex, rowbtype) <- cgExpression rowExpr
+    (regColIndex, colbtype) <- cgExpression colExpr
+    (isRef, gtype, addr) <- getVariable ident -- isRef is always false
+    case (rowbtype, colbtype, gtype) of
+        (IntType, IntType, Matrix mbtype _ _) ->
+            do
+            regAddr <- nextRegister
+            writeInstruction "load_address" [showReg regAddr, show addr]
+            flattenMatrixIndex regRowIndex regColIndex gtype
+            writeInstruction "sub_offset" [showReg regAddr, showReg regAddr,
+                                           showReg regRowIndex]
+            writeInstruction "load_indirect" [showReg regAddr, showReg regAddr]
+            putRegType regAddr (Base mbtype)
+            return (regAddr, mbtype)
+        _  ->
+            error ("Index [" ++ (show rowExpr) ++ ", " ++ (show colExpr) ++
+                   "] of matrix " ++ (show ident) ++ " cannot be loaded.")
+
+flattenMatrixIndex :: Reg -> Reg -> GoatType -> Codegen ()
+flattenMatrixIndex regRowIndex regColIndex (Matrix mbtype rows cols) = do
+    -- flattened index = rowIndex * #cols + colIndex
+    regCols <- nextRegister -- (Base IntType)
+    writeInstruction "int_const" [show regCols, show cols]
+    putRegType regCols (Base IntType)
+    writeInstruction "mul_int" [show regRowIndex, show regRowIndex,
+                                show regCols]
+    writeInstruction "add_int" [show regRowIndex, show regRowIndex,
+                                show regColIndex]
+    -- return ()
+
+-- data OperatorType = IntOp | RealOp
+data OpType = OpType BaseType
+
+-- deconstruct OpType to get BaseType
+fromOpType :: OpType -> BaseType
+fromOpType (OpType b) = b
+
+-- check types of both operands, do type casting if necessary, report final type
+cgPrepareArithmetic :: Reg -> Reg -> Codegen (OpType)
+cgPrepareArithmetic r1 r2 = do
+    t1 <- getRegType r1
+    t2 <- getRegType r2
+    case (t1, t2) of
+        (Base FloatType, Base FloatType) -> return $ OpType FloatType
+        (Base IntType,   Base FloatType) -> do
+                                            cgIntToReal r1
+                                            return $ OpType FloatType
+        (Base FloatType, Base IntType  ) -> do
+                                            cgIntToReal r2
+                                            return $ OpType FloatType
+        (Base IntType,   Base IntType  ) -> return $ OpType IntType
+        _ -> error $ "arithmetic/comparision cannot be done between " ++
+                     (show t1) ++ " and " ++ (show t2)
+
+
+-- check that logical expressions involve two booleans
+cgPrepareLogical :: Reg -> Reg -> Codegen ()
+cgPrepareLogical r1 r2 = do
+    t1 <- getRegType r1
+    t2 <- getRegType r2
+    case (t1, t2) of
+        (Base BoolType, Base BoolType) -> return ()
+        _ -> error $ "logical operation cannot be done between " ++
+                     (show t1) ++ " and " ++ (show t2)
+
+cgPrepareComparison :: Reg -> Reg -> Codegen (OpType)
+cgPrepareComparison = cgPrepareArithmetic
+
+
+

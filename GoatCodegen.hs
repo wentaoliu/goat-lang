@@ -217,8 +217,8 @@ cgProcessSection (FormalArgSpec pos Ref baseType ident) = cgDeclaration True (De
 -- generate code for each procedure
 cgProcedure :: Procedure -> Codegen()
 cgProcedure (Procedure pos ident args decls stmts) = do
-    writeComment ("procedure " ++ ident)
     writeLabel ("proc_" ++ ident)
+    writeComment ("procedure " ++ ident)
     resetVariables
     resetStack
     cgProcedure' args decls stmts
@@ -252,14 +252,12 @@ cgProcedure' args decls stmts = do
 -- number of stack slots required
 cgDeclarationPart :: [Decl] -> Codegen (MemSize)
 cgDeclarationPart decls = do
-    writeComment "declaration part"
     cgFoldr (+) 0 $ map (cgDeclaration False) decls
 
 -- generate code for a variable declaration, also used
 -- to handle parameters in a procedure
 cgDeclaration :: Bool -> Decl -> Codegen (MemSize)
 cgDeclaration varness (Decl _ ident typ) = do
-    writeComment ("declaration " ++ ident)
     case typ of
         -- ArrayTypeDeno`ter arrayType -> cgArrayType i arrayType
         Base baseType -> do
@@ -387,22 +385,14 @@ cgArgumentList :: Reg ->[(Bool, GoatType)] -> [Expr] -> Codegen ()
 cgArgumentList _ _ [] = return ()
 cgArgumentList reg ((isRef, typ):ps) (arg: args) = do
     setRegister reg
+    let basetype = cgGetBaseType typ
     if isRef
         then do
             -- pass by reference
             case arg of
-                Id _ ident -> do
-                    (_, typ', _) <- getVariable ident
-                    if typ' == typ then cgLoadAddress reg arg
-                    else error $ "expected " ++ show typ ++ ", found " ++ show typ'
-                ArrayRef _ ident i -> do 
-                    (_, typ', _) <- getVariable ident
-                    if typ' == typ then cgLoadAddress reg arg
-                    else error $ "expected " ++ show typ ++ ", found " ++ show typ'
-                MatrixRef _ ident i j -> do
-                    (_, typ', _) <- getVariable ident
-                    if typ' == typ then cgLoadAddress reg arg
-                    else error $ "expected " ++ show typ ++ ", found " ++ show typ'
+                Id _ ident -> do cgRefParameter basetype reg ident arg
+                ArrayRef _ ident _ -> do cgRefParameter basetype reg ident arg
+                MatrixRef _ ident _ _ -> do cgRefParameter basetype reg ident arg
                 otherwise -> error "expected id"
         else do
             -- pass by value
@@ -415,6 +405,13 @@ cgArgumentList reg ((isRef, typ):ps) (arg: args) = do
                                 else writeInstruction "move" [showReg reg, showReg reg']
     cgArgumentList (reg+1) ps args
 
+
+cgRefParameter :: BaseType -> Reg -> Ident -> Expr -> Codegen()
+cgRefParameter typ reg ident arg = do
+    (_, goattype, _) <- getVariable ident
+    let typ' = cgGetBaseType goattype
+    if typ' == typ then cgLoadAddress reg arg
+    else error $ "expected " ++ show typ ++ ", found " ++ show typ'
 
 cgLoadAddress :: Reg -> Expr -> Codegen ()
 cgLoadAddress reg (Id _ id) = do
@@ -716,7 +713,8 @@ cgExpression (Rel _ relop expr1 expr2) = do
             Op_lt -> "cmp_lt_"
     let relopType = 
             case optype of 
-            OpType IntType -> "int"
+            OpType BoolType  -> "int" 
+            OpType IntType   -> "int"
             OpType FloatType -> "real"
     writeInstruction (relopInstruction ++ relopType)
                      [showReg reg1, showReg reg1, showReg reg2]
@@ -853,7 +851,12 @@ cgPrepareLogical r1 r2 = do
                      (show t1) ++ " and " ++ (show t2)
 
 cgPrepareComparison :: Reg -> Reg -> Codegen (OpType)
-cgPrepareComparison = cgPrepareArithmetic
+cgPrepareComparison r1 r2 = do
+    t1 <- getRegType r1
+    t2 <- getRegType r2
+    if (t1, t2) == (Base BoolType, Base BoolType)
+    then do return (OpType BoolType)
+    else do cgPrepareArithmetic r1 r2
 
 
 

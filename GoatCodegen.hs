@@ -256,21 +256,6 @@ cgDeclaration varness (Decl _ ident typ) = do
     writeComment ("declaration " ++ ident)
     case typ of
         -- ArrayTypeDenoter arrayType -> cgArrayType i arrayType
-        
-        --robin
-        Array baseType n -> do
-            sl <- nextSlotMulti n
-            -- putVariable stores the slot number of the beginning of array
-            putVariable ident (varness, typ, sl)
-            return n
-        Matrix baseType m n -> do
-            let size = m*n
-            sl <- nextSlotMulti size
-            -- putVariable stores the slot number of the beginning of matrix
-            putVariable ident (varness, typ, sl)
-            return size
-        --robin
-        
         Base baseType -> do
             sl <- nextSlot
             putVariable ident (varness, typ, sl) 
@@ -602,6 +587,18 @@ cgVariableAccess (LArrayRef pos id expr) = do
     (isReference, goatType, slot) <- getVariable id
     --stack slot chnges depending on array index. assumes getVariable returns the stacknum of index 0 in array
     (reg, baseType) <- cgExpression expr
+
+    boundsCheckRegister <- nextRegister
+    writeInstruction "int_const" [showReg boundsCheckRegister, show (getFstDimen goatType)]
+    --if true (non zero) in boundscheckRegister, then the array access is safe
+    writeInstruction "cmp_gt_int" [showReg boundsCheckRegister, showReg boundsCheckRegister, showReg reg]
+    --jump past the halt if array bounds are not violated
+    writeInstruction "branch_on_true" [showReg boundsCheckRegister, "successful_array_access:"]
+    writeInstruction "halt" []
+    writeLabel "successful_array_access"
+
+    --TODO check if baseType is an integer
+
     r <- nextRegister
     --putRegType r (Base IntType)
     -- put address of array[0] into r
@@ -624,6 +621,26 @@ cgVariableAccess (LMatrixRef pos id expr1 expr2) = do
     --evaluate the expressions. TODO check if they are int
     (reg1, bt1) <- cgExpression expr1
     (reg2, bt2) <- cgExpression expr2
+
+    boundsCheckRegister <- nextRegister
+    writeInstruction "int_const" [showReg boundsCheckRegister, show (getFstDimen goatType)]
+    --if true (non zero) in boundscheckRegister, then the array access is safe
+    writeInstruction "cmp_gt_int" [showReg boundsCheckRegister, showReg boundsCheckRegister, showReg reg1]
+    --jump past the halt if array bounds are not violated
+    writeInstruction "branch_on_true" [showReg boundsCheckRegister, "successful_array1_access:"]
+    writeInstruction "halt" []
+    writeLabel "successful_array1_access"
+
+    writeInstruction "int_const" [showReg boundsCheckRegister, show (getSndDimen goatType)]
+    --if true (non zero) in boundscheckRegister, then the array access is safe
+    writeInstruction "cmp_gt_int" [showReg boundsCheckRegister, showReg boundsCheckRegister, showReg reg2]
+    --jump past the halt if array bounds are not violated
+    writeInstruction "branch_on_true" [showReg boundsCheckRegister, "successful_array2_access:"]
+    writeInstruction "halt" []
+    writeLabel "successful_array2_access"
+    
+    --TODO check if baseType is an IntType
+
     --multiply and add to get the offset, apply the offset and return the address in the register
     writeInstruction "mul_int" [showReg r2, showReg r2, showReg reg1]
     writeInstruction "add_int" [showReg r2, showReg r2, showReg reg2]
@@ -633,7 +650,12 @@ cgVariableAccess (LMatrixRef pos id expr1 expr2) = do
 -- TODO find a more elegant way to do this?
 getFstDimen :: GoatType -> Int
 getFstDimen (Matrix bt s1 s2) = s1
+getFstDimen (Array bt s1) = s1
 getFstDimen _ = error "getFstDimen error"
+
+getSndDimen :: GoatType -> Int
+getSndDimen (Matrix bt s1 s2) = s2
+getSndDimen _ = error "getSndDimen error"
 
 cgIntToReal :: Reg -> Codegen ()
 cgIntToReal r = do

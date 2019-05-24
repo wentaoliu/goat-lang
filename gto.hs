@@ -9,7 +9,7 @@ convertExpr (FloatConst f) = "real_const r0, " ++ (showFFloat Nothing f "") ++ "
 convertExpr (StrConst s) = "string_const r0, " ++ s ++ "\n"
 --some way to resolve this identifier -> a symbol table?
 --  convertExpr (Id id) = id
---some way to evaluate this binary expression
+--any of add, cmp, and, or , not can be used here. How to elegantly do it?
 --  convertExpr (BinExpr b e1 e2) = 
 
 -- Format (Assign|Read|Write|Call) statements which does not recursively

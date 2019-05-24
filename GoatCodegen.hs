@@ -33,7 +33,7 @@ instance Applicative Codegen where
 
 -- helper functions for operations on monad
 initState :: State
-initState = State 0 [] initSymbols (-1) (-1)
+initState = State (-1) [] initSymbols (-1) (-1)
 
 setRegister :: Reg -> Codegen ()
 setRegister r' = Codegen (\(State r c s sl l)
@@ -41,7 +41,7 @@ setRegister r' = Codegen (\(State r c s sl l)
 
 resetRegister :: Codegen Reg
 resetRegister = Codegen (\(State r c s sl l)
-    -> (0, State 0 c s sl l))
+    -> (0, State (-1) c s sl l))
 
 resetStack :: Codegen StackSlot
 resetStack = Codegen (\(State r c s sl l)
@@ -176,10 +176,43 @@ cgProgram (Program procs) = do
     writeCode "    call proc_main"
     writeCode "    halt"
     -- put all procedures into symbol table
-    -- cgJoin $ map cgPrepareProcedure procs
+    cgJoin $ map cgPrepareProcedure procs
     -- -- all procedures
     cgJoin $ map cgProcedure procs
     writeCode "    return"
+
+--robin
+cgPrepareProcedure :: Procedure -> Codegen ()
+cgPrepareProcedure (Procedure _ ident args _ _) = do
+    putProcedure ident (bareParameters args)
+
+    
+bareParameters :: [FormalArgSpec] -> [(Bool, GoatType)]
+bareParameters args = map bareParameters' args
+
+bareParameters' :: FormalArgSpec -> (Bool, GoatType)
+bareParameters' (FormalArgSpec _ Val typ _) = (False, Base typ)
+bareParameters' (FormalArgSpec _ Ref typ _) = (True, Base typ)
+            
+            
+-- generate code to put procedure arguments into stack slots
+cgStoreArg :: Reg -> StackSlot -> [FormalArgSpec] -> Codegen ()
+cgStoreArg _ _ [] = return ()
+cgStoreArg r sl (_:xs) = do
+    writeInstruction "store" [show sl, showReg r]
+    cgStoreArg (r+1) (sl+1) xs
+
+cgFormalParameterList :: [FormalArgSpec] -> Codegen (MemSize)
+cgFormalParameterList args = do
+    writeComment "formal parameter section"
+
+    cgFoldr (+) 0 $ map cgProcessSection args
+
+cgProcessSection :: FormalArgSpec -> Codegen (MemSize)
+cgProcessSection (FormalArgSpec pos Val baseType ident) = cgDeclaration False (Decl pos ident (Base baseType))
+cgProcessSection (FormalArgSpec pos Ref baseType ident) = cgDeclaration True (Decl pos ident (Base baseType))
+--robin
+
 
 -- generate code for each procedure
 cgProcedure :: Procedure -> Codegen()
@@ -197,6 +230,17 @@ cgProcedure' [] decls stmts = do
     cgPushStackFrame size
     cgCompoundStatement stmts
     cgPopStackFrame size
+--robin    
+cgProcedure' args decls stmts = do
+    -- prepare variables and params
+    size <- cgFormalParameterList args
+    size2 <- cgDeclarationPart decls
+    -- generate function body
+    cgPushStackFrame (size + size2)
+    cgStoreArg 0 0 args
+    cgCompoundStatement stmts
+    cgPopStackFrame (size + size2)
+--robin  
 
 
 -- generate code for variable declaration part, return
@@ -217,6 +261,19 @@ cgDeclaration varness (Decl _ ident typ) = do
             sl <- nextSlot
             putVariable ident (varness, typ, sl) 
             return 1 -- all primitives have size 1
+                --robin
+        Array baseType n -> do
+            sl <- nextSlotMulti n
+            -- putVariable stores the slot number of the beginning of array
+            putVariable ident (varness, typ, sl)
+            return n
+        Matrix baseType m n -> do
+            let size = m*n
+            sl <- nextSlotMulti size
+            -- putVariable stores the slot number of the beginning of matrix
+            putVariable ident (varness, typ, sl)
+            return size
+        --robin
 
 
 cgCompoundStatement :: [Stmt] -> Codegen ()
@@ -236,7 +293,31 @@ cgStatement (Write _ expr) = cgWriteStatement expr
 cgStatement (If _ expr stmts) = cgIfStatement expr stmts
 cgStatement (IfElse _ expr stmts1 stmts2) = cgIfElseStatement expr stmts1 stmts2
 cgStatement (While _ expr stmts) = cgWhileStatement expr stmts
+cgStatement (Assign _ lvalue expr) = cgAssignmentStatement lvalue expr
 
+
+cgAssignmentStatement :: Lvalue -> Expr -> Codegen ()
+cgAssignmentStatement var expr = do
+    writeComment "assignment"
+    (ltype, addr) <- cgGetVariableAccess var
+    (rvalue, rtype) <- cgExpression expr
+    case needCastType ltype rtype of
+        CastRight -> writeInstruction "int_to_real" [showReg rvalue, showReg rvalue]
+        CastLeft  -> error $ "expected integer, found real"
+        NoNeed    -> return ()
+    writeInstruction "store" [show addr, showReg rvalue]
+
+-- helper function for looking up the type of a variable
+cgGetVariableAccess :: Lvalue -> Codegen (BaseType, Int)
+cgGetVariableAccess (LId _ ident) = do
+    (_, (Base t), sl) <- getVariable ident
+    return (t, sl)
+cgGetVariableAccess (LArrayRef _ ident _) = do
+    (_, (Array t _), sl) <- getVariable ident
+    return (t, sl)
+cgGetVariableAccess (LMatrixRef _ ident _ _) = do
+    (_, (Matrix t _ _), sl) <- getVariable ident
+    return (t, sl)
 
 cgWriteStatement :: Expr -> Codegen ()
 cgWriteStatement expr = do
@@ -343,3 +424,15 @@ cgExpression (Not _ expr) = do
         BoolType -> writeInstruction "not" [showReg reg, showReg reg]
         otherwise -> error $ "expected bool, found " ++ show typ
     return (reg, typ)
+
+
+data Cast = NoNeed | CastLeft | CastRight
+needCastType :: BaseType -> BaseType -> Cast
+needCastType IntType    IntType   = NoNeed
+needCastType FloatType  FloatType = NoNeed
+needCastType BoolType   BoolType  = NoNeed
+needCastType IntType    FloatType = CastLeft
+needCastType FloatType  IntType   = CastRight
+needCastType FloatType  BoolType  = error $ "expected real, found boolean"
+needCastType BoolType   typ       = error $ "expected boolean, found " ++ show typ
+needCastType IntType    typ       = error $ "expected integer, found " ++ show typ

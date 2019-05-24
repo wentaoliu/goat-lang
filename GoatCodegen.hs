@@ -176,17 +176,9 @@ cgProgram (Program procs) = do
     writeCode "    call proc_main"
     writeCode "    halt"
     -- put all procedures into symbol table
-    
-    --robin
     cgJoin $ map cgPrepareProcedure procs
-       
-    --robin
-    
     -- -- all procedures
     cgJoin $ map cgProcedure procs
-    writeCode "    return"
-
-    
 
 --robin
 cgPrepareProcedure :: Procedure -> Codegen ()
@@ -216,18 +208,14 @@ cgFormalParameterList args = do
     cgFoldr (+) 0 $ map cgProcessSection args
 
 cgProcessSection :: FormalArgSpec -> Codegen (MemSize)
-cgProcessSection (FormalArgSpec pos Val baseType ident) = cgDeclaration False (Decl pos ident (Base baseType))
-cgProcessSection (FormalArgSpec pos Ref baseType ident) = cgDeclaration True (Decl pos ident (Base baseType))
+cgProcessSection (FormalArgSpec pos Val baseType ident) = cgFormalArgDeclaration False (Decl pos ident (Base baseType))
+cgProcessSection (FormalArgSpec pos Ref baseType ident) = cgFormalArgDeclaration True (Decl pos ident (Base baseType))
 --robin
 
-    
-    
-    
 
 -- generate code for each procedure
 cgProcedure :: Procedure -> Codegen()
 cgProcedure (Procedure pos ident args decls stmts) = do
-    writeComment ("procedure " ++ ident)
     writeLabel ("proc_" ++ ident)
     resetVariables
     resetStack
@@ -237,19 +225,27 @@ cgProcedure' :: [FormalArgSpec] -> [Decl] -> [Stmt] -> Codegen ()
 cgProcedure' [] decls stmts = do
     size <- cgDeclarationPart decls
     -- generate function body
+    writeComment "prologue"
     cgPushStackFrame size
     cgCompoundStatement stmts
+    writeComment "epilogue"
     cgPopStackFrame size
+    writeCode "    return"
 --robin    
 cgProcedure' args decls stmts = do
     -- prepare variables and params
     size <- cgFormalParameterList args
     size2 <- cgDeclarationPart decls
     -- generate function body
+    writeComment "prologue"
     cgPushStackFrame (size + size2)
+    writeComment "parameter passing"
     cgStoreArg 0 0 args
+    cgInitVariablePart decls
     cgCompoundStatement stmts
+    writeComment "epilogue"
     cgPopStackFrame (size + size2)
+    writeCode "    return"
 --robin  
 
 
@@ -257,17 +253,16 @@ cgProcedure' args decls stmts = do
 -- number of stack slots required
 cgDeclarationPart :: [Decl] -> Codegen (MemSize)
 cgDeclarationPart decls = do
-    writeComment "declaration part"
     cgFoldr (+) 0 $ map (cgDeclaration False) decls
 
--- generate code for a variable declaration, also used
--- to handle parameters in a procedure
+-- generate code for a variable declaration
 cgDeclaration :: Bool -> Decl -> Codegen (MemSize)
 cgDeclaration varness (Decl _ ident typ) = do
-    writeComment ("declaration " ++ ident)
     case typ of
-        -- ArrayTypeDenoter arrayType -> cgArrayType i arrayType
-        
+        Base baseType -> do
+            sl <- nextSlot
+            putVariable ident (varness, typ, sl) 
+            return 1 -- all primitives have size 1
         --robin
         Array baseType n -> do
             sl <- nextSlotMulti n
@@ -281,7 +276,73 @@ cgDeclaration varness (Decl _ ident typ) = do
             putVariable ident (varness, typ, sl)
             return size
         --robin
-        
+
+-- initialize all variables in declaration part
+cgInitVariablePart  :: [Decl] -> Codegen()
+cgInitVariablePart  decls = do
+    cgJoin $ map cgInitVariable decls
+    
+cgInitVariable :: Decl -> Codegen()
+cgInitVariable (Decl _ ident typ) = do
+    (_, _, sl) <- getVariable ident
+    case typ of
+        Base baseType -> do
+            case baseType of
+                BoolType -> do 
+                    writeComment ("initialize bool val " ++ ident)
+                    cgInitInt sl 1
+                IntType -> do
+                    writeComment ("initialize int val " ++ ident)
+                    cgInitInt sl 1
+                FloatType -> do
+                    writeComment ("initialize float val " ++ ident)
+                    cgInitFloat sl 1
+        Array baseType n -> do
+            case baseType of
+                BoolType -> do
+                    writeComment ("initialize bool val " ++ ident ++ "[" ++ show n ++ "]")
+                    cgInitInt sl n
+                IntType -> do
+                    writeComment ("initialize int val " ++ ident ++ "[" ++ show n ++ "]")
+                    cgInitInt sl n
+                FloatType -> do
+                    writeComment ("initialize float val " ++ ident ++ "[" ++ show n ++ "]")
+                    cgInitFloat sl n
+        Matrix baseType m n -> do
+            let size = m*n
+            case baseType of
+                BoolType -> do
+                    writeComment ("initialize bool val "  ++ ident ++ "[" ++ show m ++ "," ++ show n ++ "]")
+                    cgInitInt sl size
+                IntType -> do
+                    writeComment ("initialize int val "  ++ ident ++ "[" ++ show m ++ "," ++ show n ++ "]")
+                    cgInitInt sl size
+                FloatType -> do
+                    writeComment ("initialize float val "  ++ ident ++ "[" ++ show m ++ "," ++ show n ++ "]")
+                    cgInitFloat sl size
+
+
+-- initialize int and bool variable, array and matrix
+cgInitInt :: Int -> Int -> Codegen()
+cgInitInt sl 0 = return ()
+cgInitInt sl size = do
+    writeInstruction "int_const"  ["r0", "0"]
+    writeInstruction "store" [show sl, "r0"]
+    cgInitInt (sl+1) (size-1)
+
+-- initialize float variable, array and matrix
+cgInitFloat :: Int -> Int -> Codegen()
+cgInitFloat sl 0 = return ()
+cgInitFloat sl size = do
+    writeInstruction "real_const"  ["r0", "0.0"]
+    writeInstruction "store" [show sl, "r0"]
+    cgInitInt (sl+1) (size-1)
+
+
+-- generate code to handle parameters in a procedure
+cgFormalArgDeclaration :: Bool -> Decl -> Codegen (MemSize)
+cgFormalArgDeclaration varness (Decl _ ident typ) = do
+    case typ of
         Base baseType -> do
             sl <- nextSlot
             putVariable ident (varness, typ, sl) 
@@ -305,7 +366,31 @@ cgStatement (Write _ expr) = cgWriteStatement expr
 cgStatement (If _ expr stmts) = cgIfStatement expr stmts
 cgStatement (IfElse _ expr stmts1 stmts2) = cgIfElseStatement expr stmts1 stmts2
 cgStatement (While _ expr stmts) = cgWhileStatement expr stmts
+cgStatement (Assign _ lvalue expr) = cgAssignmentStatement lvalue expr
 
+
+cgAssignmentStatement :: Lvalue -> Expr -> Codegen ()
+cgAssignmentStatement var expr = do
+    writeComment "assignment"
+    (ltype, addr) <- cgGetVariableAccess var
+    (rvalue, rtype) <- cgExpression expr
+    case needCastType ltype rtype of
+        CastRight -> writeInstruction "int_to_real" [showReg rvalue, showReg rvalue]
+        CastLeft  -> error $ "expected integer, found real"
+        NoNeed    -> return ()
+    writeInstruction "store" [show addr, showReg rvalue]
+
+-- helper function for looking up the type of a variable
+cgGetVariableAccess :: Lvalue -> Codegen (BaseType, Int)
+cgGetVariableAccess (LId _ ident) = do
+    (_, (Base t), sl) <- getVariable ident
+    return (t, sl)
+cgGetVariableAccess (LArrayRef _ ident _) = do
+    (_, (Array t _), sl) <- getVariable ident
+    return (t, sl)
+cgGetVariableAccess (LMatrixRef _ ident _ _) = do
+    (_, (Matrix t _ _), sl) <- getVariable ident
+    return (t, sl)
 
 cgWriteStatement :: Expr -> Codegen ()
 cgWriteStatement expr = do
@@ -412,3 +497,15 @@ cgExpression (Not _ expr) = do
         BoolType -> writeInstruction "not" [showReg reg, showReg reg]
         otherwise -> error $ "expected bool, found " ++ show typ
     return (reg, typ)
+
+
+data Cast = NoNeed | CastLeft | CastRight
+needCastType :: BaseType -> BaseType -> Cast
+needCastType IntType    IntType   = NoNeed
+needCastType FloatType  FloatType = NoNeed
+needCastType BoolType   BoolType  = NoNeed
+needCastType IntType    FloatType = CastLeft
+needCastType FloatType  IntType   = CastRight
+needCastType FloatType  BoolType  = error $ "expected real, found boolean"
+needCastType BoolType   typ       = error $ "expected boolean, found " ++ show typ
+needCastType IntType    typ       = error $ "expected integer, found " ++ show typ

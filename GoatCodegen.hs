@@ -451,12 +451,14 @@ cgLoadAddress reg (MatrixRef _ id expr1 expr2) = do
 -- generate code to read input from console
 cgReadStatement :: Lvalue -> Codegen ()
 cgReadStatement var = do
-    (ref, t, sl) <- cgVariableAccess var
+    t <- cgGetVariableType var
     let name = case t of
             IntType     -> "read_int"
             FloatType   -> "read_real"
             BoolType    -> "read_bool"
     writeInstruction "call_builtin" [name]
+    nextRegister
+    (ref, _, sl) <- cgVariableAccess var
     case ref of
         False -> writeInstruction "store" [show sl, showReg regZero]
         True -> writeInstruction "store_indirect" [showReg sl, showReg regZero]
@@ -516,7 +518,7 @@ cgVariableAccess (LArrayRef pos id expr) = do
     -- put address of array[0] into r
     writeInstruction "load_address" [showReg r, show slot]
     -- increment address of array[0] by the value in reg (the expression)
-    writeInstruction "sub_offset" [showReg r, showReg r, show reg]
+    writeInstruction "sub_offset" [showReg r, showReg r, showReg reg]
     return (True, cgGetBaseType goatType, r)
 cgVariableAccess (LMatrixRef pos id expr1 expr2) = do
     --assumes accessing array[8][3] from array[10][10] means the stack slot is &a[0] + (8*10)+3 
@@ -807,12 +809,12 @@ flattenMatrixIndex :: Reg -> Reg -> GoatType -> Codegen ()
 flattenMatrixIndex regRowIndex regColIndex (Matrix mbtype rows cols) = do
     -- flattened index = rowIndex * #cols + colIndex
     regCols <- nextRegister -- (Base IntType)
-    writeInstruction "int_const" [show regCols, show cols]
+    writeInstruction "int_const" [showReg regCols, show cols]
     putRegType regCols (Base IntType)
-    writeInstruction "mul_int" [show regRowIndex, show regRowIndex,
-                                show regCols]
-    writeInstruction "add_int" [show regRowIndex, show regRowIndex,
-                                show regColIndex]
+    writeInstruction "mul_int" [showReg regRowIndex, showReg regRowIndex,
+                                showReg regCols]
+    writeInstruction "add_int" [showReg regRowIndex, showReg regRowIndex,
+                                showReg regColIndex]
     -- return ()
 
 -- data OperatorType = IntOp | RealOp

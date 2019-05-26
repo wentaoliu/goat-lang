@@ -739,7 +739,7 @@ cgExpression (Id _ ident) = do
         (True, Base btype)  -> 
             do
                 reg <- nextRegister
-                writeInstruction "load_indirect" [showReg reg, show addr]
+                writeInstruction "load_indirect" [showReg reg, showReg addr]
                 putRegType reg (Base btype)
                 return (reg, btype)
         _                   -> 

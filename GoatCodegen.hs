@@ -749,7 +749,7 @@ cgExpression (Id _ ident) = do
         (True, Base btype)  -> 
             do
                 reg <- nextRegister
-                writeInstruction "load_indirect" [showReg reg, show addr]
+                writeInstruction "load_indirect" [showReg reg, showReg addr]
                 putRegType reg (Base btype)
                 return (reg, btype)
         _                   -> 
@@ -870,66 +870,4 @@ cgPrepareComparison r1 r2 = do
     else do cgPrepareArithmetic r1 r2
 
 
-    r <- nextRegister
-    --putRegType r (Base IntType)
-    -- put address of array[0] into r
-    writeInstruction "load_address" [showReg r, show slot]
-    -- increment address of array[0] by the value in reg (the expression)
-    writeInstruction "sub_offset" [showReg r, showReg r, show reg]
-    return (True, cgGetBaseType goatType, r)
-cgVariableAccess (LMatrixRef pos id expr1 expr2) = do
-    writeComment "getting location of matrix element"
-    --assumes accessing array[8][3] from array[10][10] means the stack slot is &a[0] + (8*10)+3 
-    (isReference, goatType, slot) <- getVariable id
-    r1 <- nextRegister
-    --putRegType r (Base IntType)
-    writeInstruction "load_address" [showReg r1, show slot]
-    --get the size of the first dimension of the array
-    r2 <- nextRegister
-    --putRegType r (Base IntType)
-    writeComment "size of array fst dimension"
-    writeInstruction "int_const" [showReg r2, show $ getFstDimen goatType]
-    --evaluate the expressions. TODO check if they are int
-    (reg1, bt1) <- cgExpression expr1
-    (reg2, bt2) <- cgExpression expr2
-
-    boundsCheckRegister <- nextRegister
-    writeInstruction "int_const" [showReg boundsCheckRegister, show (getFstDimen goatType)]
-    --if true (non zero) in boundscheckRegister, then the array access is safe
-    writeInstruction "cmp_gt_int" [showReg boundsCheckRegister, showReg boundsCheckRegister, showReg reg1]
-    --jump past the halt if array bounds are not violated
-    writeInstruction "branch_on_true" [showReg boundsCheckRegister, "successful_array1_access:"]
-    writeInstruction "halt" []
-    writeLabel "successful_array1_access"
-
-    writeInstruction "int_const" [showReg boundsCheckRegister, show (getSndDimen goatType)]
-    --if true (non zero) in boundscheckRegister, then the array access is safe
-    writeInstruction "cmp_gt_int" [showReg boundsCheckRegister, showReg boundsCheckRegister, showReg reg2]
-    --jump past the halt if array bounds are not violated
-    writeInstruction "branch_on_true" [showReg boundsCheckRegister, "successful_array2_access:"]
-    writeInstruction "halt" []
-    writeLabel "successful_array2_access"
-    
-    --TODO check if baseType is an IntType
-
-    --multiply and add to get the offset, apply the offset and return the address in the register
-    writeInstruction "mul_int" [showReg r2, showReg r2, showReg reg1]
-    writeInstruction "add_int" [showReg r2, showReg r2, showReg reg2]
-    writeInstruction "sub_offset" [showReg r1, showReg r1, showReg r2]
-    return (True, cgGetBaseType goatType, r1)
-
--- TODO find a more elegant way to do this?
-getFstDimen :: GoatType -> Int
-getFstDimen (Matrix bt s1 s2) = s1
-getFstDimen (Array bt s1) = s1
-getFstDimen _ = error "getFstDimen error"
-
-getSndDimen :: GoatType -> Int
-getSndDimen (Matrix bt s1 s2) = s2
-getSndDimen _ = error "getSndDimen error"
-
-cgIntToReal :: Reg -> Codegen ()
-cgIntToReal r = do
-    writeInstruction "int_to_real" [showReg r, showReg r]
-    putRegType r (Base FloatType) 
 

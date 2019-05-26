@@ -1,30 +1,29 @@
 proc main()
-	int a[3,4];
-	int i;
-	int j;
+    int a[2];
+    int b;
 begin
-	i := 0;
-	while i < 3 do
-		while j < 4 do
-			a[i,j] := i * 2 + j;
-		od
-	od
-	call writeresult (2, 2);
-end
+  a[2] := 3;
+  read b;
 
-proc writeresult(val int x, val int y)
-	int i;
-	int j;
-begin
-	i := 0;
-	j := 0;
-	while i < x do
-		while j < y do
-			write a[i,j];
-			write " "
-			j := j+1;
-		od
-		write "\n";
-		i := i+1;
-	od
+  write 101;
+  write "abc";
+
+  if true then
+    write 102;
+    write 103;
+  fi
+
+  if false then
+    write 10.4;
+    write 10.5;
+  else 
+    write "abcd";
+    write "abcde";
+  fi
+
+
+  while true do
+    write 1010;
+    write true;
+  od
 end

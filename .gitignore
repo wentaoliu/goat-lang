@@ -28,3 +28,6 @@ tests/
 .gitignore
 resources/
 gto.hs
+Goat
+.vscode
+temp

@@ -24,7 +24,6 @@ KidParser
 GoatParser
 Goat
 Kid/
-tests/
 .gitignore
 resources/
 gto.hs

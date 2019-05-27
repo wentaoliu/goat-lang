@@ -1,0 +1,188 @@
+# program must have a 0 arg procedure main
+# BUG our generator doesnt check this - only caught at oz usage stage
+proc main ()
+    int i1;
+    int i2;
+    # variables must only be declared once
+    # BUG our program doesnt check this
+    int i1;
+    float f1;
+    float f2;
+    bool b1;
+    bool b2;
+
+    int ia[2];
+    int im[2,3];
+    float fa[2];
+    float fm[2,3];
+    bool ba[2];
+    bool bm[2,3];
+
+begin
+
+    # var default initialisation
+    write i1;
+    write f1;
+    write b1;
+    write ia[0];
+    write im[0,0];
+    write fa[1];
+    write fm[0,2];
+    write ba[1];
+    write bm[1,2];
+
+    # !=, = must have acceptable typed args (int/int, bool/bool, int/float ...)
+    write i1 = i2;
+    write f1 = f2;
+    write b1 = b2;
+    write i1 = f1;
+    write f1 = i1;
+
+    write i1 != i2;
+    write f1 != f2;
+    write b1 != b2;
+    write i1 != f1;
+    write f1 != i1;
+
+    # unacceptable
+    # write b1 = i2;
+
+    # comparison operators must be correctly typed
+    write i1 < i2;
+    write i1 <= i2;
+    write i1 > i2;
+    write i1 >= i2;
+
+    write f1 < f2;
+    write f1 <= f2;
+    write f1 > f2;
+    write f1 >= f2;
+
+    write b1 < b2;
+    write b1 <= b2;
+    write b1 > b2;
+    write b1 >= b2;
+
+    write i1 < f1;
+    write i1 <= f1;
+    write i1 > f1;
+    write i1 >= f1;
+
+    # unacceptable
+    #write b1 < i2;
+    #write b1 <= i2;
+    #write b1 > i2;
+    #write b1 >= i2;
+
+    #Arithmetic operators
+    i2 := 1;
+    f2 := 1.5;
+
+    write i1 + i2;
+    write i1 - i2;
+    write i1 * i2;
+    write i1 / i2;
+
+    write f1 + f2;
+    write f1 - f2;
+    write f1 * f2;
+    write f1 / f2;
+
+    write i1 + f2;
+    write i1 - f2;
+    write i1 * f2;
+    write i1 / f2;
+
+    write f1 + i2;
+    write f1 - i2;
+    write f1 * i2;
+    write f1 / i2;
+
+    # logical operators
+    write b1 && b2;
+    write b1 || b2;
+    write !b1;
+
+    write 1 > 0;
+    write 1 = 1 && ! (2 = 3);
+
+    # nonstrictness logical ops
+    #write 5 < 8 || 5 > 8/0;  #BUG , this should be evaluated as true but produces error
+
+    
+    # Assignment
+    i1 := 1;
+    #i1 := 1.0;  #successful failure, cant assign float to int
+    #i1 := b1;  #successful failure, cant assign bool to int
+
+    f1 := 2.45;
+    f1 := 5;
+    #f1 := b1;   #successful failure, cant assign bool to float
+
+    #b1 := 5;   #successful failure
+    #b1 := 2.45;   #successful failure
+    b1 := b2;
+    b1 := true;
+    b2 := b1;
+    
+    # Read statments
+    # BUG when entering a float 0.5, i1 becomes 0 and f1 becomes 0.5 immediately
+    #read i1;
+    #write i1;
+    #read f1;
+    #write f1;
+    #read b1;
+    #write b1;
+
+    # Compound statements
+    if true then
+        write true;
+    fi 
+
+    if true then 
+        write true;
+    else 
+        write false;
+    fi
+
+    while i1 < 3 do 
+        i1 := i1 + 1;
+    od
+    write i1;
+
+    # guard condition needs to be bool
+    # BUG unsuccessful failure: ints in conditional is treated as boolean (0-false, other-true)
+    if 5 then 
+        write "if condition needs to be bool";
+    fi
+    # i1 is set in read statment above. I set it as 1 for test 
+    while i1 do
+        i1 := i1 - 1;
+    od
+    write i1;
+
+    call p(i1, i2);
+    #call p(i1,i2,f1); #successful failure 
+    #call p(f1,f2); #successful failure 
+
+    # Array related
+    ia := 0; #BUG unsuccessful failure, ia array must be indexed 
+    #call p(ia, im); #successful failure, args must not be unindexed array
+    #ia[b1] := 1; #successful failure, array indicies must be ints [done]
+end
+
+# BUG ducplicate procedures are not caught at compile time
+proc p(val int in, ref int out)
+begin
+    write "duplicate proc p";
+end
+#proc p(val int in, ref int out)
+#begin
+#    write "duplicate proc p lower";
+#end
+
+#BUG identical param names are not caught at compile time
+proc identical_param(val int num, val float num)
+begin
+    write "identical parameter names";
+end

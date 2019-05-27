@@ -661,22 +661,53 @@ generateExpression (Not _ expr) = do
         otherwise -> error $ "expected bool, found " ++ show typ
     return (reg, BoolType)
 
--- And | Or
+-- And operator with nonstrictness. If only i could use the generateIfStmt but I think its slightly different
+-- expr2 evaluated only if expr1 is true, basically:
+-- if expr1
+--     if expr2
+--         true
+-- else false
 generateExpression (And _ expr1 expr2) = do
+    expr2Label <- nextLabel
+    endlabel <- nextLabel
+
     (reg1, typ1) <- generateExpression expr1
-    (reg2, typ2) <- generateExpression expr2
-    analyseLogicalOp reg1 reg2
-    writeInstruction "and" [showReg reg1, showReg reg1, showReg reg2]
-    -- (typ1 == typ2 == BoolType)
+    checkBoolean typ1
+    -- if true the go to the label for checking expr2
+    writeInstruction "branch_on_true" [showReg reg1, expr2Label]
+    -- otherwise reg1 already contains 0 (false) and we just skip the rest of the logical expression
+    writeInstruction "branch_uncond" [endlabel]
+
+    --the second arg of the && expression
+    writeLabel expr2Label
+    (reg1, typ2) <- generateExpression expr2
+    checkBoolean typ2
+    -- at this point, expr1 is true so the overall value of the expression depends on this expr2
+    -- so we can leave the value in reg1 as the final result
+    writeInstruction "branch_uncond" [endlabel]
+    
+    writeLabel endlabel
     putRegType reg1 (Base BoolType)
     return (reg1, BoolType)
 
+-- Or operator with nonstrictness
+-- approximately -> if expr1 then true, elif expr2 then true
 generateExpression (Or _ expr1 expr2) = do
+    endLabel <- nextLabel
+    falseLabel <- nextLabel
     (reg1, typ1) <- generateExpression expr1
-    (reg2, typ2) <- generateExpression expr2
-    analyseLogicalOp reg1 reg2
-    writeInstruction "or" [showReg reg1, showReg reg1, showReg reg2]
-    -- (typ1 == typ2 == BoolType)
+    checkBoolean typ1
+    -- if expr1 evaluated to true just skip the rest of the logical expr, we're done
+    writeInstruction "branch_on_true" [showReg reg1, endLabel]
+    -- if the branch instruction didnt send us away, the instructions to evaluate expr2 now execute
+    (reg1, typ2) <- generateExpression expr2
+    checkBoolean typ2
+    -- if expr2 is true, then we finish the logical expr 
+    writeInstruction "branch_on_true" [showReg reg1, endLabel]
+    -- if that branch instruction didnt send us off, a value of 0 (false) is put in the output register
+    writeInstruction "int_const" [showReg reg1, show 0]
+
+    writeLabel endLabel
     putRegType reg1 (Base BoolType)
     return (reg1, BoolType) 
 
@@ -841,4 +872,6 @@ generatePrepareComparison r1 r2 = do
     else do generateTypeCasting r1 r2
 
 
-
+checkBoolean :: BaseType -> Codegen (Bool)
+checkBoolean BoolType = do return True
+checkBoolean _ = error "Expected boolean argument for logical operators" 

@@ -107,7 +107,8 @@ begin
     write 1 = 1 && ! (2 = 3);
 
     # nonstrictness logical ops
-    #write 5 < 8 || 5 > 8/0;  #BUG , this should be evaluated as true but produces error
+    write "\n";
+    write 5 > 8 && 3;  #BUG , this should be evaluated as true but produces error
 
     
     # Assignment

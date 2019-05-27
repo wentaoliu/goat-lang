@@ -380,18 +380,18 @@ proc_main:
     branch_uncond label_1
 label_0:
     load r1, 6
+    move r0, r1
     branch_uncond label_1
 label_1:
-    move r0, r1
     call_builtin print_bool
   # write b1 || b2;
     load r0, 5
     branch_on_true r0, label_2
     load r1, 6
-    branch_on_true r1, label_2
-    int_const r1, 0
-label_2:
     move r0, r1
+    branch_on_true r0, label_2
+    int_const r0, 0
+label_2:
     call_builtin print_bool
   # write !b1;
     load r0, 5
@@ -413,15 +413,15 @@ label_4:
     int_const r3, 3
     cmp_eq_int r2, r2, r3
     not r2, r2
+    move r0, r2
     branch_uncond label_5
 label_5:
-    move r0, r2
     call_builtin print_bool
   # write "\n";
     string_const r0, "\n"
     call_builtin print_string
-  # write (5 > 8) && ((3 / 0) = 5);
-    int_const r0, 5
+  # write (0 > 8) && ((3 / 0) = 5);
+    int_const r0, 0
     int_const r1, 8
     cmp_gt_int r0, r0, r1
     branch_on_true r0, label_6
@@ -432,9 +432,9 @@ label_6:
     div_int r2, r2, r3
     int_const r4, 5
     cmp_eq_int r2, r2, r4
+    move r0, r2
     branch_uncond label_7
 label_7:
-    move r0, r2
     call_builtin print_bool
   # write (4 = 4) || ((3 / 0) = 5);
     int_const r0, 4
@@ -446,10 +446,10 @@ label_7:
     div_int r2, r2, r3
     int_const r4, 5
     cmp_eq_int r2, r2, r4
-    branch_on_true r2, label_8
-    int_const r2, 0
-label_8:
     move r0, r2
+    branch_on_true r0, label_8
+    int_const r0, 0
+label_8:
     call_builtin print_bool
   # i1 := 1;
     int_const r0, 1

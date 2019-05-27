@@ -108,7 +108,7 @@ begin
 
     # nonstrictness logical ops
     write "\n";
-    write 5 > 8 && 3/0 = 5;  #successful success, the unevaluateable second arg is ignore if the first arg satisfies the logical oparator
+    write 0 > 8 && 3/0 = 5;  #successful success, the unevaluateable second arg is ignore if the first arg satisfies the logical oparator
     write 4 = 4 || 3/0 = 5;
     
     # Assignment

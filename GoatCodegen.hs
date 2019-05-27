@@ -680,7 +680,7 @@ generateExpression (And _ expr1 expr2) = do
 
     --the second arg of the && expression
     writeLabel expr2Label
-    (reg1, typ2) <- generateExpression expr2
+    (reg2, typ2) <- generateExpression expr2
     checkBoolean typ2
     -- at this point, expr1 is true so the overall value of the expression depends on this expr2
     -- so we can leave the value in reg1 as the final result
@@ -700,7 +700,7 @@ generateExpression (Or _ expr1 expr2) = do
     -- if expr1 evaluated to true just skip the rest of the logical expr, we're done
     writeInstruction "branch_on_true" [showReg reg1, endLabel]
     -- if the branch instruction didnt send us away, the instructions to evaluate expr2 now execute
-    (reg1, typ2) <- generateExpression expr2
+    (reg2, typ2) <- generateExpression expr2
     checkBoolean typ2
     -- if expr2 is true, then we finish the logical expr 
     writeInstruction "branch_on_true" [showReg reg1, endLabel]

@@ -108,8 +108,8 @@ begin
 
     # nonstrictness logical ops
     write "\n";
-    write 5 > 8 && 3;  #BUG , this should be evaluated as true but produces error
-
+    write 5 > 8 && 3/0 = 5;  #successful success, the unevaluateable second arg is ignore if the first arg satisfies the logical oparator
+    write 4 = 4 || 3/0 = 5;
     
     # Assignment
     i1 := 1;

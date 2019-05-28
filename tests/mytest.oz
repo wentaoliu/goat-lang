@@ -556,33 +556,6 @@ label_17:
     load_address r1, 6
     sub_offset r1, r1, r2
     call proc_p
-  # read i1;
-    call_builtin read_int
-    store 0, r0
-  # write i1;
-    load r0, 0
-    call_builtin print_int
-  # write "\n";
-    string_const r0, "\n"
-    call_builtin print_string
-  # read f1;
-    call_builtin read_real
-    store 2, r0
-  # write f1;
-    load r0, 2
-    call_builtin print_real
-  # write "\n";
-    string_const r0, "\n"
-    call_builtin print_string
-  # read b1;
-    call_builtin read_bool
-    store 4, r0
-  # write b1;
-    load r0, 4
-    call_builtin print_bool
-  # write "\n";
-    string_const r0, "\n"
-    call_builtin print_string
   # i1 := 10;
     int_const r0, 10
     store 0, r0
@@ -632,6 +605,31 @@ label_17:
   # write "\n";
     string_const r0, "\n"
     call_builtin print_string
+  # write "\n";
+    string_const r0, "\n"
+    call_builtin print_string
+  # ia[0] := 10;
+    int_const r0, 0
+    load_address r1, 6
+    sub_offset r1, r1, r0
+    int_const r2, 10
+    store_indirect r1, r2
+  # ia[1] := 11;
+    int_const r0, 1
+    load_address r1, 6
+    sub_offset r1, r1, r0
+    int_const r2, 11
+    store_indirect r1, r2
+  # read i1;
+    call_builtin read_int
+    store 0, r0
+  # write ia[i1];
+    load r0, 0
+    load_address r1, 6
+    sub_offset r1, r1, r0
+    load_indirect r1, r1
+    move r0, r1
+    call_builtin print_int
     pop_stack_frame 30
     return
 proc_refMod:

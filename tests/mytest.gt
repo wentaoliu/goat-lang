@@ -172,18 +172,18 @@ begin
     write ia[1];
     call p(3, ia[1]);
 
-    # Read statments
+    # Read statments (commented out because its easier to run without having to input)
     # BUG (maybe?) when entering a float for int num, i1 becomes 0 and the value is passed into the next read
     # actually this might be a problem with the oz executable, it uses scanf so 0.99 will will read 0 as the int and leave .99 in the buffer ???
-    read i1;
-    write i1;
-    write "\n";
-    read f1;
-    write f1;
-    write "\n";
-    read b1;
-    write b1;
-    write "\n";
+    #read i1;
+    #write i1;
+    #write "\n";
+    #read f1;
+    #write f1;
+    #write "\n";
+    #read b1;
+    #write b1;
+    #write "\n";
 
     #successful modification of i1, prints 10 and then prints 0 after proc call
     i1 := 10;
@@ -200,7 +200,13 @@ begin
     call refMod (ia[0]);
     write ia[0];
     write "\n";
+    write "\n";
 
+    #array indexing with read variables
+    ia[0] := 10;
+    ia[1] := 11;
+    read i1;
+    write ia[i1];
 end
 
 proc refMod(ref int num) 

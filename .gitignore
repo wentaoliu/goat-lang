@@ -20,13 +20,13 @@ cabal.project.local
 cabal.project.local~
 .HTF/
 .ghc.environment.*
-<<<<<<< HEAD
 KidParser
 GoatParser
 Goat
-./Kid
-./tests
-=======
-
+Kid/
+.gitignore
+resources/
+gto.hs
 Goat
->>>>>>> master
+.vscode
+temp/

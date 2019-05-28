@@ -1,0 +1,4 @@
+proc testerror3()
+int x;
+begin
+x:=1;

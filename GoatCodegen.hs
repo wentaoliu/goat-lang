@@ -442,8 +442,6 @@ generateReadStatement var = do
             FloatType   -> "read_real"
             BoolType    -> "read_bool"
     writeInstruction "call_builtin" [name]
-    --TODO what is the purpose of this nextRegister below?? can we remove?
-  --nextRegister
     (ref, _, sl) <- variableLocation var
     case ref of
         False -> writeInstruction "store" [show sl, showReg regZero]

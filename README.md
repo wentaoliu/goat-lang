@@ -12,25 +12,25 @@ Skeleton code by Harald
 ## Issues
 Todo:
 
-check mytest.gt and search BUG for all unfixed bugs 
+*check mytest.gt and search BUG for all unfixed bugs *
 
-read statemtnts when expecint int and got float
+*read statemtnts when expecint int and got float*
 
-test modifying reference argument with array
+*test modifying reference argument with array*
 
 
 Fixed:
 
-nonstricness for logical ops
+*nonstricness for logical ops*
 
-if/while conditions must be bool
+*if/while conditions must be bool*
 
-array indices must be ints
+*array indices must be ints*
 
-array variables must be fully indexed
+*array variables must be fully indexed*
 
-duplicated declarations of variables, procedures
+*duplicated declarations of variables, procedures*
 
-program must contain main
+*program must contain main*
 
-generateExpr Ident isRef bug
+*generateExpr Ident isRef bug*

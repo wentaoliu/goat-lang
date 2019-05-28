@@ -526,9 +526,6 @@ label_17:
     move r0, r1
     load_address r1, 1
     call proc_p
-  # ia := 0;
-    int_const r0, 0
-    store 7, r0
   # write "\n";
     string_const r0, "\n"
     call_builtin print_string

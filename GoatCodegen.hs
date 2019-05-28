@@ -470,12 +470,19 @@ goatType2BaseType (Base bt) = bt
 goatType2BaseType (Array bt num) = bt
 goatType2BaseType (Matrix  bt num1 num2) = bt
 
+checkVarIndexing :: GoatType -> Lvalue -> Codegen()
+checkVarIndexing (Base _) (LId _ _) = do return ()
+checkVarIndexing (Array _ _) (LArrayRef _ _ _) = do return ()
+checkVarIndexing (Matrix _ _ _) (LMatrixRef _ _ _ _) = do return ()
+checkVarIndexing _ _ = error "Variable not properly indexed"
+
 --returns the reference type, data type and location of a named variable
 -- location is slotnum if its a value (bool=false) and register num if its a reference (bool=true)
 variableLocation :: Lvalue -> Codegen (Bool, BaseType, Int)
 variableLocation (LId pos id) = do
 -- Single variable info
     (isReference, goatType, slot) <- getVariable id
+    checkVarIndexing goatType (LId pos id)
     if not isReference then do
         return (isReference, goatType2BaseType goatType, slot)
     else do
@@ -485,6 +492,7 @@ variableLocation (LId pos id) = do
 -- Array element info
 variableLocation (LArrayRef pos id expr) = do
     (isReference, goatType, slot) <- getVariable id
+    checkVarIndexing goatType (LArrayRef pos id expr)
     (reg, baseType) <- generateExpression expr
     exprType <- getRegType reg
     case (goatType2BaseType exprType) of
@@ -497,6 +505,7 @@ variableLocation (LArrayRef pos id expr) = do
 -- Matrix element info
 variableLocation (LMatrixRef pos id expr1 expr2) = do
     (isReference, goatType, slot) <- getVariable id
+    checkVarIndexing goatType (LMatrixRef pos id expr1 expr2)
     r1 <- nextRegister
     writeInstruction "load_address" [showReg r1, show slot]
     r2 <- nextRegister
@@ -743,8 +752,6 @@ generateExpression (Rel _ relop expr1 expr2) = do
     putRegType reg1 (Base BoolType)
     return (reg1, BoolType)
 
--- Id Pos Ident
--- getVariable :: String -> Codegen (Bool, BaseType, Int)
 generateExpression (Id _ ident) = do
     (isRef, goattype, addr) <- getVariable ident
     case (isRef, goattype) of 

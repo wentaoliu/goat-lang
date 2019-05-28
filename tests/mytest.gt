@@ -163,12 +163,12 @@ begin
     #od
     write "\n";
     write i2;
-    call p(i1, i2);
+    call p(i1, i2); #fixed: printing i2 used to get register no value or something like that
     #call p(i1,i2,f1); #successful failure 
     #call p(f1,f2); #successful failure 
 
     # Array related
-    ia := 0; #BUG unsuccessful failure, ia array must be indexed 
+    #ia := 0; #successful failure, ia array must be indexed 
     #call p(ia, im); #successful failure, args must not be unindexed array
     #ia[b1] := 1; #successful failure, array indicies must be ints [done]
     

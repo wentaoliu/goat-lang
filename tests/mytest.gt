@@ -127,16 +127,17 @@ begin
     b2 := b1;
 
     # Compound statements
+    #test basic if stmt
     if true then
         write true;
     fi 
-
+    # test basic if else stmt
     if true then 
         write true;
     else 
         write false;
     fi
-
+    #test basic while stmt
     while i1 < 3 do 
         i1 := i1 + 1;
     od
@@ -152,11 +153,11 @@ begin
     #while i1 do
     #    i1 := i1 - 1;
     #od
-    write "\n";
-    write i2;
+
+    #procedure call related
     call p(i1, i2); #fixed: printing i2 used to get register no value or something like that
-    #call p(i1,i2,f1); #successful failure 
-    #call p(f1,f2); #successful failure 
+    #call p(i1,i2,f1); #successful failure, proc aristy mismatch
+    #call p(f1,f2); #successful failure, incorrect arg type
 
     # Array related
     #ia := 0; #successful failure, ia array must be indexed 
@@ -172,7 +173,8 @@ begin
     call p(3, ia[1]);
 
     # Read statments
-    # BUG when entering a float for int num, i1 becomes 0 and the value is passed into the next read
+    # BUG (maybe?) when entering a float for int num, i1 becomes 0 and the value is passed into the next read
+    # actually this might be a problem with the oz executable, it uses scanf so 0.99 will will read 0 as the int and leave .99 in the buffer ???
     read i1;
     write i1;
     write "\n";
@@ -190,7 +192,15 @@ begin
     call refMod (i1);
     write i1;
     write "\n";
-    
+
+    #successful modification of ia[0]
+    ia[0] := 9;
+    write ia[0];
+    write "\n";
+    call refMod (ia[0]);
+    write ia[0];
+    write "\n";
+
 end
 
 proc refMod(ref int num) 

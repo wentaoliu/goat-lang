@@ -512,12 +512,6 @@ label_17:
   # write i1;
     load r0, 0
     call_builtin print_int
-  # write "\n";
-    string_const r0, "\n"
-    call_builtin print_string
-  # write i2;
-    load r0, 1
-    call_builtin print_int
   # call p(i1, i2);
     load r1, 0
     move r0, r1
@@ -603,6 +597,37 @@ label_17:
     call proc_refMod
   # write i1;
     load r0, 0
+    call_builtin print_int
+  # write "\n";
+    string_const r0, "\n"
+    call_builtin print_string
+  # ia[0] := 9;
+    int_const r0, 0
+    load_address r1, 6
+    sub_offset r1, r1, r0
+    int_const r2, 9
+    store_indirect r1, r2
+  # write ia[0];
+    int_const r0, 0
+    load_address r1, 6
+    sub_offset r1, r1, r0
+    load_indirect r1, r1
+    move r0, r1
+    call_builtin print_int
+  # write "\n";
+    string_const r0, "\n"
+    call_builtin print_string
+  # call refMod(ia[0]);
+    int_const r1, 0
+    load_address r0, 6
+    sub_offset r0, r0, r1
+    call proc_refMod
+  # write ia[0];
+    int_const r0, 0
+    load_address r1, 6
+    sub_offset r1, r1, r0
+    load_indirect r1, r1
+    move r0, r1
     call_builtin print_int
   # write "\n";
     string_const r0, "\n"

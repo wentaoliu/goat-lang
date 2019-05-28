@@ -16,8 +16,6 @@ Todo:
 
 * read statemtnts when expecint int and got float >>>> not sure if we did anything wrong for this. for the input 0.99, looks like the scanner reads 0 for the int and leaves .99 in the buffer, which can be read by a float stmt.
 
-* test modifying reference argument with array
-
 
 Fixed:
 

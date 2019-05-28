@@ -3,9 +3,7 @@
 proc main ()
     int i1;
     int i2;
-    # variables must only be declared once
-    # BUG our program doesnt check this
-    int i1;
+    #int i1; #fixed:  variables must only be declared once
     float f1;
     float f2;
     bool b1;
@@ -181,7 +179,21 @@ begin
     call p(3, ia[1]);
 end
 
-# BUG ducplicate procedures are not caught at compile time
+# fixed: ducplicate procedures are not caught at compile time
+#proc p(val int in, ref int out)
+#begin
+#    write "\n";
+#    write "proc p";
+#    write "\n";
+#    write "passed val arg: ";
+#    write in;
+#    write "\n";
+#    write "passed reference arg: ";
+#    #fixed: register not valid when trying to access var: out
+#    write out;
+#    write "\n";
+#end
+
 proc p(val int in, ref int out)
 begin
     write "\n";
@@ -191,17 +203,16 @@ begin
     write in;
     write "\n";
     write "passed reference arg: ";
-    #BUG register not valid when trying to access var: out
+    #fixed: register not valid when trying to access var: out
     write out;
     write "\n";
 end
 
-
-#BUG identical param names are not caught at compile time
-proc identical_param(val int num, val float num)
-begin
-    write "\n";
-    write num;
-    write "\n";
-    write "identical parameter names";
-end
+#fixed: identical param names are not caught at compile time
+#proc identical_param(val int num, val float num)
+#begin
+#    write "\n";
+#    write num;
+#    write "\n";
+#    write "identical parameter names";
+#end

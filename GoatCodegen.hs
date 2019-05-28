@@ -92,7 +92,6 @@ writeInstruction name [] = writeCode name
 writeInstruction name args =
     writeCode $ "    " ++ name ++ " " ++ (strJoin ", " args)
 
-
 showReg :: Reg -> String
 showReg r = "r" ++ show r
 
@@ -116,14 +115,6 @@ putVariable :: String -> (Bool, GoatType, Int) -> Codegen ()
 putVariable name val = Codegen (\(State r c symbols sl l) ->
     ((), State r c (insertVariable name val symbols) sl l))
 
-getArrayBounds :: String -> Codegen (Int, Int)
-getArrayBounds name = Codegen (\(State r c symbols sl l) ->
-    (lookupArrayBounds name symbols, State r c symbols sl l))
-
-putArrayBounds :: String -> (Int, Int) -> Codegen ()
-putArrayBounds name val = Codegen (\(State r c symbols sl l) ->
-    ((), State r c (insertArrayBounds name val symbols) sl l))
-
 putProcedure :: String -> [(Bool, GoatType)] -> Codegen ()
 putProcedure name params = Codegen (\(State r c symbols sl l) ->
     ((), State r c (insertProcedure name params symbols) sl l))
@@ -131,6 +122,15 @@ putProcedure name params = Codegen (\(State r c symbols sl l) ->
 getProcedure :: String -> Codegen ([(Bool, GoatType)])
 getProcedure name = Codegen (\(State r c symbols sl l) ->
     (lookupProcedure name symbols, State r c symbols sl l))
+
+variableExists :: String -> Codegen (Bool)
+variableExists name = Codegen (\(State r c symbols sl l) ->
+    (varMembership name symbols, State r c symbols sl l))
+
+procExists :: String -> Codegen (Bool)
+procExists name = Codegen (\(State r c symbols sl l) ->
+    (procMembership name symbols, State r c symbols sl l))
+
 
 strJoin :: String -> [String] -> String
 strJoin _ [] = ""
@@ -183,7 +183,10 @@ generateProgram (Program procs) = do
 --For each procedure, put it into a map of ident->[(reference Type, base Type)]
 storeProcedureInfo :: Procedure -> Codegen ()
 storeProcedureInfo (Procedure _ ident args _ _) = do
-    putProcedure ident (extractArgInfo args)
+    duplicate <- procExists ident
+    case duplicate of
+        True -> error ("duplicate procedure detected!!: " ++ show ident)
+        False -> putProcedure ident (extractArgInfo args)
 
 --extracts the refType and BaseType from a FormalArgSpec type (see AST)
 extractArgInfo :: [FormalArgSpec] -> [(Bool, GoatType)]
@@ -196,6 +199,7 @@ extractArgInfo' (FormalArgSpec _ Ref typ _) = (True, Base typ)
 analyseProcArgs :: [FormalArgSpec] -> Codegen (MemSize)
 analyseProcArgs args = do
     generateFoldr (+) 0 $ map analyseProcArg args
+
 analyseProcArg :: FormalArgSpec -> Codegen (MemSize)
 analyseProcArg (FormalArgSpec pos Val baseType ident) = analyseDeclaration False (Decl pos ident (Base baseType))
 analyseProcArg (FormalArgSpec pos Ref baseType ident) = analyseDeclaration True (Decl pos ident (Base baseType))
@@ -226,28 +230,31 @@ generateProcArgs r sl (_:xs) = do
     writeInstruction "store" [show sl, showReg r]
     generateProcArgs (r+1) (sl+1) xs
 
--- generate instructions for variable declaration part, return
+-- Look over all declarations, do some processing, return
 -- number of stack slots required
 analyseDeclarations :: [Decl] -> Codegen (MemSize)
 analyseDeclarations decls = do
     generateFoldr (+) 0 $ map (analyseDeclaration False) decls
 
--- Add variable to symbol table and calculate required memory to store it
+-- Add variable to symbol table and calculate required memory to store it. Also check for duplicates
+-- Includes procedure arguments as well, so the Declaration part is a bit of a misnomer
 analyseDeclaration :: Bool -> Decl -> Codegen (MemSize)
 analyseDeclaration varness (Decl _ ident typ) = do
-    case typ of
+    duplicate <- variableExists ident
+    case (typ, duplicate) of
+        (_, True) -> error ("Duplicate variable declaration detected!!: " ++ show ident)
         -- ArrayTypeDenoter arrayType -> generateArrayType i arrayType
-        Base baseType -> do
+        (Base baseType, False) -> do
             sl <- nextSlot
             putVariable ident (varness, typ, sl) 
             return 1 -- all primitives have size 1
                 --robin
-        Array baseType n -> do
+        (Array baseType n, False) -> do
             sl <- nextSlotMulti n
             -- putVariable stores the slot number of the beginning of array
             putVariable ident (varness, typ, sl)
             return n
-        Matrix baseType m n -> do
+        (Matrix baseType m n, False) -> do
             let size = m*n
             sl <- nextSlotMulti size
             -- putVariable stores the slot number of the beginning of matrix
@@ -470,11 +477,11 @@ goatType2BaseType (Base bt) = bt
 goatType2BaseType (Array bt num) = bt
 goatType2BaseType (Matrix  bt num1 num2) = bt
 
-checkVarIndexing :: GoatType -> Lvalue -> Codegen()
-checkVarIndexing (Base _) (LId _ _) = do return ()
-checkVarIndexing (Array _ _) (LArrayRef _ _ _) = do return ()
-checkVarIndexing (Matrix _ _ _) (LMatrixRef _ _ _ _) = do return ()
-checkVarIndexing _ _ = error "Variable not properly indexed"
+matchGoatTypeLvalueType :: GoatType -> Lvalue -> Codegen()
+matchGoatTypeLvalueType (Base _) (LId _ _) = do return ()
+matchGoatTypeLvalueType (Array _ _) (LArrayRef _ _ _) = do return ()
+matchGoatTypeLvalueType (Matrix _ _ _) (LMatrixRef _ _ _ _) = do return ()
+matchGoatTypeLvalueType _ _ = error "Variable not properly indexed"
 
 --returns the reference type, data type and location of a named variable
 -- location is slotnum if its a value (bool=false) and register num if its a reference (bool=true)
@@ -482,7 +489,7 @@ variableLocation :: Lvalue -> Codegen (Bool, BaseType, Int)
 variableLocation (LId pos id) = do
 -- Single variable info
     (isReference, goatType, slot) <- getVariable id
-    checkVarIndexing goatType (LId pos id)
+    matchGoatTypeLvalueType goatType (LId pos id)
     if not isReference then do
         return (isReference, goatType2BaseType goatType, slot)
     else do
@@ -492,7 +499,7 @@ variableLocation (LId pos id) = do
 -- Array element info
 variableLocation (LArrayRef pos id expr) = do
     (isReference, goatType, slot) <- getVariable id
-    checkVarIndexing goatType (LArrayRef pos id expr)
+    matchGoatTypeLvalueType goatType (LArrayRef pos id expr)
     (reg, baseType) <- generateExpression expr
     exprType <- getRegType reg
     case (goatType2BaseType exprType) of
@@ -505,7 +512,7 @@ variableLocation (LArrayRef pos id expr) = do
 -- Matrix element info
 variableLocation (LMatrixRef pos id expr1 expr2) = do
     (isReference, goatType, slot) <- getVariable id
-    checkVarIndexing goatType (LMatrixRef pos id expr1 expr2)
+    matchGoatTypeLvalueType goatType (LMatrixRef pos id expr1 expr2)
     r1 <- nextRegister
     writeInstruction "load_address" [showReg r1, show slot]
     r2 <- nextRegister

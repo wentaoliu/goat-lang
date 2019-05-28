@@ -19,7 +19,7 @@ proc main ()
 
 begin
 
-    # var default initialisation
+    # basic writing
     write i1;
     write f1;
     write b1;
@@ -43,7 +43,7 @@ begin
     write i1 != f1;
     write f1 != i1;
 
-    # unacceptable
+    # successful failure, boolan and int is noncomparable
     # write b1 = i2;
 
     # comparison operators must be correctly typed
@@ -67,7 +67,7 @@ begin
     write i1 > f1;
     write i1 >= f1;
 
-    # unacceptable
+    # successful failure
     #write b1 < i2;
     #write b1 <= i2;
     #write b1 > i2;
@@ -109,6 +109,7 @@ begin
     write "\n";
     write 0 > 8 && 3/0 = 5;  #successful success, the unevaluateable second arg is ignore if the first arg satisfies the logical oparator
     write 4 = 4 || 3/0 = 5;
+    #write 3/0 = 5 && 0 > 8;  #successful failure, the impossible first arg is tested first and fails runtime
     
     # Assignment
     i1 := 1;
@@ -124,15 +125,6 @@ begin
     b1 := b2;
     b1 := true;
     b2 := b1;
-    
-    # Read statments
-    # BUG when entering a float 0.5, i1 becomes 0 and f1 becomes 0.5 immediately
-    #read i1;
-    #write i1;
-    #read f1;
-    #write f1;
-    #read b1;
-    #write b1;
 
     # Compound statements
     if true then
@@ -150,8 +142,8 @@ begin
     od
     write i1;
 
-    # guard condition needs to be bool
-    # successful failure: ints in conditional is treated as boolean (0-false, other-true)
+    # 
+    # fixed: successful failure: guard condition needs to be bool
     #if 5 then 
     #    write "\n";
     #    write "if condition needs to be bool";
@@ -178,6 +170,32 @@ begin
     write ia[0];
     write ia[1];
     call p(3, ia[1]);
+
+    # Read statments
+    # BUG when entering a float for int num, i1 becomes 0 and the value is passed into the next read
+    read i1;
+    write i1;
+    write "\n";
+    read f1;
+    write f1;
+    write "\n";
+    read b1;
+    write b1;
+    write "\n";
+
+    #successful modification of i1, prints 10 and then prints 0 after proc call
+    i1 := 10;
+    write i1;
+    write "\n";
+    call refMod (i1);
+    write i1;
+    write "\n";
+    
+end
+
+proc refMod(ref int num) 
+begin
+    num := 0;
 end
 
 # fixed: ducplicate procedures are not caught at compile time

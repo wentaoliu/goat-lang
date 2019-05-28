@@ -442,6 +442,7 @@ generateReadStatement var = do
             FloatType   -> "read_real"
             BoolType    -> "read_bool"
     writeInstruction "call_builtin" [name]
+    nextRegister
     (ref, _, sl) <- variableLocation var
     case ref of
         False -> writeInstruction "store" [show sl, showReg regZero]

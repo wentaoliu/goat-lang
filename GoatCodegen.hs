@@ -177,8 +177,11 @@ generateProgram (Program procs) = do
     writeCode "    halt"
     -- put all procedures into symbol table
     generateJoin $ map storeProcedureInfo procs
-    -- -- all procedures
-    generateJoin $ map generateProcedure procs
+    mainExists <- procExists "main"
+    case mainExists of 
+        True -> generateJoin $ map generateProcedure procs
+        False -> error "program must contain a 0 arg procedure \"main\""
+    
 
 --For each procedure, put it into a map of ident->[(reference Type, base Type)]
 storeProcedureInfo :: Procedure -> Codegen ()

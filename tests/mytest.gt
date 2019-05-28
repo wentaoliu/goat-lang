@@ -1,6 +1,7 @@
 # program must have a 0 arg procedure main
-# BUG our generator doesnt check this - only caught at oz usage stage
+# fixed: our generator doesnt check this - only caught at oz usage stage
 proc main ()
+#proc notmain()
     int i1;
     int i2;
     #int i1; #fixed:  variables must only be declared once

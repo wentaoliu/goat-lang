@@ -37,6 +37,6 @@ Fixed:
 
 Generate all oz files from gt files in tests: `./test.sh `
 
-Test single gt file- generate oz file and run it: `./singleTest.sh filelocation[-p | -i | -a]`
+Test single gt file- generate oz file and run it: `./singleTest.sh filelocation [-p | -i | -a]`
 
 I used `./singleTest.sh tests/mytest.gt` for testing 

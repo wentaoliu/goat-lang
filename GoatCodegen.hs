@@ -1,5 +1,19 @@
 module GoatCodegen where
 
+---------------------------------------------------------------------------
+--  A compiler for Goat
+--
+--  Author: Wumpus-Killers (Wentao Liu, Raymond Sun, Zeyu Huang, Yiqun Wang)
+-- 
+--  Structure of the module:
+--  * helper functions and monads
+--  * procedure generation
+--  * decleartion generation
+--  * statement generation
+--  * variable access (array and matrix)
+--  * expression generation
+---------------------------------------------------------------------------
+
 import GoatAST
 import GoatSymTable
 import PrettyPrinter
@@ -442,7 +456,7 @@ generateReadStatement var = do
             FloatType   -> "read_real"
             BoolType    -> "read_bool"
     writeInstruction "call_builtin" [name]
-    nextRegister
+    nextRegister -- otherwise the r0 might be overwritten
     (ref, _, sl) <- variableLocation var
     case ref of
         False -> writeInstruction "store" [show sl, showReg regZero]

@@ -1,5 +1,13 @@
 module GoatSymTable where
 
+---------------------------------------------------------------------------
+--  Symbol table, for the Goat compiler
+--
+--  Author: Wumpus-Killers (Wentao Liu, Raymond Sun, Zeyu Huang, Yiqun Wang)
+-- 
+--  A symbol table and helper functions 
+---------------------------------------------------------------------------
+
 import Data.Map
 import GoatAST ( GoatType )
 

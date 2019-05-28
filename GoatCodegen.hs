@@ -18,6 +18,7 @@ import GoatAST
 import GoatSymTable
 import PrettyPrinter
 import qualified Data.Map as Map
+import Data.List (intercalate)
 import Control.Monad
 
 type StackSlot = Int
@@ -104,7 +105,7 @@ writeLabel str = writeCode $ str ++ ":"
 writeInstruction :: String -> [String] -> Codegen ()
 writeInstruction name [] = writeCode name
 writeInstruction name args =
-    writeCode $ "    " ++ name ++ " " ++ (strJoin ", " args)
+    writeCode $ "    " ++ name ++ " " ++ (intercalate ", " args)
 
 showReg :: Reg -> String
 showReg r = "r" ++ show r
@@ -144,12 +145,6 @@ variableExists name = Codegen (\(State r c symbols sl l) ->
 procExists :: String -> Codegen (Bool)
 procExists name = Codegen (\(State r c symbols sl l) ->
     (procMembership name symbols, State r c symbols sl l))
-
-
-strJoin :: String -> [String] -> String
-strJoin _ [] = ""
-strJoin _ [x] = x
-strJoin sep (x:y:zs) = x ++ sep ++ (strJoin sep (y:zs))
 
 generateJoin :: [Codegen ()] -> Codegen ()
 generateJoin [] = return ()

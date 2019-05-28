@@ -515,32 +515,11 @@ label_17:
   # write i1;
     load r0, 2
     call_builtin print_int
-  # if 5 then
-    int_const r0, 5
-    branch_on_true r0, label_18
-    branch_uncond label_19
-label_18:
-  # write "if condition needs to be bool";
-    string_const r0, "if condition needs to be bool"
+  # write "\n";
+    string_const r0, "\n"
     call_builtin print_string
-label_19:
-  # fi
-  # while i1 do
-label_20:
-    load r0, 2
-    branch_on_true r0, label_21
-    branch_uncond label_22
-label_21:
-  # i1 := i1 - 1;
-    load r0, 2
-    int_const r1, 1
-    sub_int r0, r0, r1
-    store 2, r0
-    branch_uncond label_20
-label_22:
-  # od
-  # write i1;
-    load r0, 2
+  # write i2;
+    load r0, 1
     call_builtin print_int
   # call p(i1, i2);
     load r1, 2
@@ -550,6 +529,45 @@ label_22:
   # ia := 0;
     int_const r0, 0
     store 7, r0
+  # write "\n";
+    string_const r0, "\n"
+    call_builtin print_string
+  # ia[0] := 69;
+    int_const r0, 0
+    load_address r1, 7
+    sub_offset r1, r1, r0
+    int_const r2, 69
+    store_indirect r1, r2
+  # ia[1] := 11;
+    int_const r0, 1
+    load_address r1, 7
+    sub_offset r1, r1, r0
+    int_const r2, 11
+    store_indirect r1, r2
+  # write "\nia values: ";
+    string_const r0, "\nia values: "
+    call_builtin print_string
+  # write ia[0];
+    int_const r0, 0
+    load_address r1, 7
+    sub_offset r1, r1, r0
+    load_indirect r1, r1
+    move r0, r1
+    call_builtin print_int
+  # write ia[1];
+    int_const r0, 1
+    load_address r1, 7
+    sub_offset r1, r1, r0
+    load_indirect r1, r1
+    move r0, r1
+    call_builtin print_int
+  # call p(3, ia[1]);
+    int_const r1, 3
+    move r0, r1
+    int_const r2, 1
+    load_address r1, 7
+    sub_offset r1, r1, r2
+    call proc_p
     pop_stack_frame 31
     return
 proc_p:
@@ -558,8 +576,33 @@ proc_p:
   # formal parameter section
     store 0, r0
     store 1, r1
-  # write "duplicate proc p";
-    string_const r0, "duplicate proc p"
+  # write "\n";
+    string_const r0, "\n"
+    call_builtin print_string
+  # write "proc p";
+    string_const r0, "proc p"
+    call_builtin print_string
+  # write "\n";
+    string_const r0, "\n"
+    call_builtin print_string
+  # write "passed val arg: ";
+    string_const r0, "passed val arg: "
+    call_builtin print_string
+  # write in;
+    load r0, 0
+    call_builtin print_int
+  # write "\n";
+    string_const r0, "\n"
+    call_builtin print_string
+  # write "passed reference arg: ";
+    string_const r0, "passed reference arg: "
+    call_builtin print_string
+  # write out;
+    load r0, 1
+    load_indirect r0, r0
+    call_builtin print_int
+  # write "\n";
+    string_const r0, "\n"
     call_builtin print_string
     pop_stack_frame 2
     return
@@ -569,6 +612,15 @@ proc_identical_param:
   # formal parameter section
     store 0, r0
     store 1, r1
+  # write "\n";
+    string_const r0, "\n"
+    call_builtin print_string
+  # write num;
+    load r0, 1
+    call_builtin print_real
+  # write "\n";
+    string_const r0, "\n"
+    call_builtin print_string
   # write "identical parameter names";
     string_const r0, "identical parameter names"
     call_builtin print_string

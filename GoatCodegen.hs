@@ -324,7 +324,7 @@ generateFormalArgDeclaration varness (Decl _ ident typ) = do
         Base baseType -> do
             sl <- nextSlot
             putVariable ident (varness, typ, sl) 
-            return 1 -- all primitives have size 1
+            return 1 
 
 -- Generate instructions for a given block of statements
 generateStatements :: [Stmt] -> Codegen ()
@@ -432,8 +432,9 @@ generateReadStatement var = do
             FloatType   -> "read_real"
             BoolType    -> "read_bool"
     writeInstruction "call_builtin" [name]
-    nextRegister
-    (ref, _, sl) <- variableInformation var
+    --TODO what is the purpose of this nextRegister below?? can we remove?
+  --nextRegister
+    (ref, _, sl) <- variableLocation var
     case ref of
         False -> writeInstruction "store" [show sl, showReg regZero]
         True -> writeInstruction "store_indirect" [showReg sl, showReg regZero]
@@ -441,7 +442,7 @@ generateReadStatement var = do
 -- Generate instr for a given assignment of Expr to Lvalue
 generateAssignmentStatement :: Lvalue -> Expr -> Codegen ()
 generateAssignmentStatement var expr = do
-    (isRef, varType, addr) <- variableInformation var
+    (isRef, varType, addr) <- variableLocation var
     (exprReg, exprType) <- generateExpression expr
     case needCastType varType exprType of
         CastRight -> writeInstruction "int_to_real" [showReg exprReg, showReg exprReg]
@@ -471,8 +472,8 @@ goatType2BaseType (Matrix  bt num1 num2) = bt
 
 --returns the reference type, data type and location of a named variable
 -- location is slotnum if its a value (bool=false) and register num if its a reference (bool=true)
-variableInformation :: Lvalue -> Codegen (Bool, BaseType, Int)
-variableInformation (LId pos id) = do
+variableLocation :: Lvalue -> Codegen (Bool, BaseType, Int)
+variableLocation (LId pos id) = do
 -- Single variable info
     (isReference, goatType, slot) <- getVariable id
     if not isReference then do
@@ -482,7 +483,7 @@ variableInformation (LId pos id) = do
         writeInstruction "load" [showReg r, show slot]
         return (isReference, goatType2BaseType goatType, r)
 -- Array element info
-variableInformation (LArrayRef pos id expr) = do
+variableLocation (LArrayRef pos id expr) = do
     (isReference, goatType, slot) <- getVariable id
     (reg, baseType) <- generateExpression expr
     exprType <- getRegType reg
@@ -494,14 +495,13 @@ variableInformation (LArrayRef pos id expr) = do
             return (True, goatType2BaseType goatType, r)
         (_) -> error "Array indicies must be integers"
 -- Matrix element info
-variableInformation (LMatrixRef pos id expr1 expr2) = do
+variableLocation (LMatrixRef pos id expr1 expr2) = do
     (isReference, goatType, slot) <- getVariable id
     r1 <- nextRegister
     writeInstruction "load_address" [showReg r1, show slot]
     r2 <- nextRegister
     writeComment "size of array fst dimension"
     writeInstruction "int_const" [showReg r2, show $ getFstDimen goatType]
-    --evaluate the expressions. TODO check if they are int
     (reg1, bt1) <- generateExpression expr1
     (reg2, bt2) <- generateExpression expr2
     expr1Type <- getRegType reg1
@@ -546,6 +546,7 @@ generateIfStatement expr stmts = do
     afterLabel <- nextLabel
     -- expression
     (reg, typ) <- generateExpression expr
+    checkBoolean typ
     writeInstruction "branch_on_true" [showReg reg, beginLabel]
     writeInstruction "branch_uncond" [afterLabel]
     -- if part
@@ -562,6 +563,7 @@ generateIfElseStatement expr stmts1 stmts2 = do
     afterLabel <- nextLabel
     -- expression
     (reg, typ) <- generateExpression expr
+    checkBoolean typ
     writeInstruction "branch_on_true" [showReg reg, beginLabel]
     writeInstruction "branch_uncond" [elseLabel]
     -- if part
@@ -584,6 +586,7 @@ generateWhileStatement expr stmts = do
     writeLabel beginLabel
     -- while expression
     (reg, typ) <- generateExpression expr
+    checkBoolean typ
     writeInstruction "branch_on_true" [showReg reg, whileLabel]
     writeInstruction "branch_uncond" [afterLabel]
     -- while body
@@ -754,7 +757,8 @@ generateExpression (Id _ ident) = do
         (True, Base btype)  -> 
             do
                 reg <- nextRegister
-                writeInstruction "load_indirect" [showReg reg, showReg addr]
+                writeInstruction "load" [showReg reg, show addr]
+                writeInstruction "load_indirect" [showReg reg, showReg reg]
                 putRegType reg (Base btype)
                 return (reg, btype)
         _                   -> 
@@ -880,4 +884,4 @@ generatePrepareComparison r1 r2 = do
 
 checkBoolean :: BaseType -> Codegen (Bool)
 checkBoolean BoolType = do return True
-checkBoolean _ = error "Expected boolean argument for logical operators" 
+checkBoolean otherType = error ("Expected boolean, got " ++ (show otherType))

@@ -152,16 +152,17 @@ begin
     write i1;
 
     # guard condition needs to be bool
-    # BUG unsuccessful failure: ints in conditional is treated as boolean (0-false, other-true)
-    if 5 then 
-        write "if condition needs to be bool";
-    fi
+    # successful failure: ints in conditional is treated as boolean (0-false, other-true)
+    #if 5 then 
+    #    write "\n";
+    #    write "if condition needs to be bool";
+    #fi
     # i1 is set in read statment above. I set it as 1 for test 
-    while i1 do
-        i1 := i1 - 1;
-    od
-    write i1;
-
+    #while i1 do
+    #    i1 := i1 - 1;
+    #od
+    write "\n";
+    write i2;
     call p(i1, i2);
     #call p(i1,i2,f1); #successful failure 
     #call p(f1,f2); #successful failure 
@@ -170,20 +171,37 @@ begin
     ia := 0; #BUG unsuccessful failure, ia array must be indexed 
     #call p(ia, im); #successful failure, args must not be unindexed array
     #ia[b1] := 1; #successful failure, array indicies must be ints [done]
+    
+    write "\n";
+    ia[0] := 69;
+    ia[1] := 11;
+    write "\nia values: ";
+    write ia[0];
+    write ia[1];
+    call p(3, ia[1]);
 end
 
 # BUG ducplicate procedures are not caught at compile time
 proc p(val int in, ref int out)
 begin
-    write "duplicate proc p";
+    write "\n";
+    write "proc p";
+    write "\n";
+    write "passed val arg: ";
+    write in;
+    write "\n";
+    write "passed reference arg: ";
+    #BUG register not valid when trying to access var: out
+    write out;
+    write "\n";
 end
-#proc p(val int in, ref int out)
-#begin
-#    write "duplicate proc p lower";
-#end
+
 
 #BUG identical param names are not caught at compile time
 proc identical_param(val int num, val float num)
 begin
+    write "\n";
+    write num;
+    write "\n";
     write "identical parameter names";
 end

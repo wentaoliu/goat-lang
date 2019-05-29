@@ -21,9 +21,6 @@ import qualified Data.Map as Map
 import Data.List (intercalate)
 import Control.Monad
 
--- additional lib (bob-3)
--- import  Data.Bool
-
 type StackSlot = Int
 type Label = String
 type LabelCounter = Int
@@ -31,6 +28,10 @@ type MemSize = Int
 type Code = [Instruction]
 type Instruction = String
 type Stack = [Int]
+
+------------------------------------
+--  State Monad and helper functions
+------------------------------------
 
 data State = State Reg Code Symbols StackSlot LabelCounter
 data Codegen a = Codegen (State -> (a, State))
@@ -181,8 +182,10 @@ generateCode prog = do
     let State _ instructions _ _ _ = finalState
     printSepBy (putStr "\n") (map putStr instructions)
 
+--------------------------------
+-- Functions for code generation
+--------------------------------
 
--- here starts functions for code generation
 generateProgram :: Program -> Codegen ()
 generateProgram (Program procs) = do
     writeCode "    call proc_main"
@@ -194,6 +197,9 @@ generateProgram (Program procs) = do
         True -> generateJoin $ map generateProcedure procs
         False -> error "program must contain a 0 arg procedure \"main\""
     
+-------------
+-- Procedures
+-------------
 
 --For each procedure, put it into a map of ident->[(reference Type, base Type)]
 storeProcedureInfo :: Procedure -> Codegen ()
@@ -244,6 +250,10 @@ generateProcArgs _ _ [] = return ()
 generateProcArgs r sl (_:xs) = do
     writeInstruction "store" [show sl, showReg r]
     generateProcArgs (r+1) (sl+1) xs
+
+---------------
+-- Declarations
+---------------
 
 -- Look over all declarations, do some processing, return
 -- number of stack slots required
@@ -347,6 +357,10 @@ generateFormalArgDeclaration varness (Decl _ ident typ) = do
             sl <- nextSlot
             putVariable ident (varness, typ, sl) 
             return 1 
+
+-------------
+-- Statements
+-------------
 
 -- Generate instructions for a given block of statements
 generateStatements :: [Stmt] -> Codegen ()
@@ -538,7 +552,7 @@ variableLocation (LMatrixRef pos id expr1 expr2) = do
     expr2Type <- getRegType reg2
     case (goatType2BaseType expr1Type, goatType2BaseType expr2Type) of
         (IntType, IntType) -> do
-            --multiply and add to get the offset, apply the offset and return the address in the register
+            -- multiply and add to get the offset, apply the offset and return the address in the register
             writeInstruction "mul_int" [showReg r2, showReg r2, showReg reg1]
             writeInstruction "add_int" [showReg r2, showReg r2, showReg reg2]
             writeInstruction "sub_offset" [showReg r1, showReg r1, showReg r2]
@@ -556,18 +570,9 @@ generateIntToReal r = do
     writeInstruction "int_to_real" [showReg r, showReg r]
     putRegType r (Base FloatType) 
 
-<<<<<<< HEAD
-
-
-cgWriteStatement :: Expr -> Codegen ()
-cgWriteStatement expr = do
-    writeComment "write"
-    (reg, typ) <- cgExpression expr
-=======
 generateWriteStatement :: Expr -> Codegen ()
 generateWriteStatement expr = do
     (reg, typ) <- generateExpression expr
->>>>>>> master
     func <- case typ of
         IntType     -> return "print_int"
         FloatType   -> return "print_real"
@@ -646,19 +651,20 @@ needCastType FloatType  BoolType  = error $ "expected real, found boolean"
 needCastType BoolType   typ       = error $ "expected boolean, found " ++ show typ
 needCastType IntType    typ       = error $ "expected integer, found " ++ show typ
 
----------------
---  expressions
----------------
+--------------
+-- Expressions
+--------------
 
+-- The following ExprType is not implemented but has been what we bear in mind
+-- while writing code genration functions for expressions.
 -- data ExprType = SimpleExprType
 --               | LogicExprType 
 --               | RelExprType 
 --               | IdExprType
 --               | ArithExprType
 
-
--- Instructions for evaluating expressions. The end value of the expr is stored in 
--- the returned Reg. also returns the type of the expression evaluated
+-- Instructions for evaluating expressions. The end value of the expr is stored
+-- in the returned Reg. also returns the type of the expression evaluated
 generateExpression :: Expr -> Codegen (Reg, BaseType)
 -- const access
 generateExpression (BoolCon _ bool) = do
@@ -703,7 +709,8 @@ generateExpression (Not _ expr) = do
         otherwise -> error $ "expected bool, found " ++ show typ
     return (reg, BoolType)
 
--- And operator with nonstrictness. If only i could use the generateIfStmt but I think its slightly different
+-- And operator with nonstrictness. If only i could use the generateIfStmt,
+-- but I think this is slightly different.
 -- expr2 evaluated only if expr1 is true, basically:
 -- if expr1
 --     if expr2
@@ -717,7 +724,8 @@ generateExpression (And _ expr1 expr2) = do
     checkBoolean typ1
     -- if true the go to the label for checking expr2
     writeInstruction "branch_on_true" [showReg reg1, expr2Label]
-    -- otherwise reg1 already contains 0 (false) and we just skip the rest of the logical expression
+    -- otherwise reg1 already contains 0 (false) and we just skip the rest of
+    -- the logical expression
     writeInstruction "branch_uncond" [endlabel]
 
     -- the second arg of the && expression
@@ -725,9 +733,11 @@ generateExpression (And _ expr1 expr2) = do
     (reg2, typ2) <- generateExpression expr2
     checkBoolean typ2
     -- move the value of expr2 into reg1 because we are returning reg1 
-    -- dont worry, this won't happen if expr1 branches past this block so reg1 is guaranteed to hold the desired result
+    -- dont worry, this won't happen if expr1 branches past this block so reg1
+    -- is guaranteed to hold the desired result
     writeInstruction "move" [showReg reg1, showReg reg2]
-    -- at this point, expr1 is true so the overall value of the expression depends on this expr2
+    -- at this point, expr1 is true so the overall value of the expression 
+    -- depends on this expr2
     -- so we can leave the value in reg1 as the final result
     writeInstruction "branch_uncond" [endlabel]
     
@@ -742,17 +752,19 @@ generateExpression (Or _ expr1 expr2) = do
     falseLabel <- nextLabel
     (reg1, typ1) <- generateExpression expr1
     checkBoolean typ1
-    -- if expr1 evaluated to true just skip the rest of the logical expr, we're done
+    -- if expr1 evaluated to true just skip the rest of the logical expr,
+    -- we're done
     writeInstruction "branch_on_true" [showReg reg1, endLabel]
-    -- if the branch instruction didnt send us away, the instructions to evaluate expr2 now execute
+    -- if the branch instruction didnt send us away, the instructions to
+    -- evaluate expr2 now execute
     (reg2, typ2) <- generateExpression expr2
     checkBoolean typ2
     -- move the value of expr2 into reg1 because we are returning reg1 
-    -- dont worry, this won't happen if expr1 branches past this block so reg1 is guaranteed to hold the desired result
     writeInstruction "move" [showReg reg1, showReg reg2]
     -- if expr2 is true, then we finish the logical expr 
     writeInstruction "branch_on_true" [showReg reg1, endLabel]
-    -- if that branch instruction didnt send us off, a value of 0 (false) is put in the output register
+    -- if that branch instruction didnt send us off, a value of 0 (false)
+    -- is put in the output register
     writeInstruction "int_const" [showReg reg1, show 0]
 
     writeLabel endLabel
@@ -882,7 +894,7 @@ fromOpType :: OpType -> BaseType
 fromOpType (OpType b) = b
 
 -- Generate instructions for casting number types (for two args of a binary op)
--- Check types of both operands, do type casting if necessary, return result type
+-- Check types of both operands, do type casting if necessary, return OpType
 generateTypeCasting :: Reg -> Reg -> Codegen (OpType)
 generateTypeCasting r1 r2 = do
     t1 <- getRegType r1

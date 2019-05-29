@@ -600,10 +600,6 @@ variableLocation (LMatrixRef pos id expr1 expr2) = do
             writeInstruction "sub_offset" [showReg r1, showReg r1, showReg reg1]
             return (True, goatType2BaseType goatType, r1)
         (_,_) -> error "Matrix indicies must be integers"
-    
-getFstDimen :: GoatType -> Int
-getFstDimen (Matrix bt s1 s2) = s1
-getFstDimen _ = error "getFstDimen error"
 
 generateIfStatement :: Expr -> [Stmt] -> Codegen ()
 generateIfStatement expr stmts = do
@@ -718,8 +714,7 @@ generateExpression (Not _ expr) = do
         otherwise -> error $ "expected bool, found " ++ show typ
     return (reg, BoolType)
 
--- And operator with nonstrictness. If only i could use the generateIfStmt,
--- but I think this is slightly different.
+-- And operator with nonstrictness.
 -- expr2 evaluated only if expr1 is true, basically:
 -- if expr1
 --     if expr2
@@ -863,7 +858,7 @@ generateExpression (ArrayRef _ ident expr) = do
         _  ->
             error ("Index [" ++ (show expr) ++ "] of array " ++ (show ident) ++
                   " cannot be loaded.")
-            
+
 generateExpression (MatrixRef _ ident rowExpr colExpr) = do
     (regRowIndex, rowbtype) <- generateExpression rowExpr
     (regColIndex, colbtype) <- generateExpression colExpr

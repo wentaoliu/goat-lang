@@ -246,7 +246,6 @@ analyseDeclaration varness (Decl _ ident typ) = do
     duplicate <- variableExists ident
     case (typ, duplicate) of
         (_, True) -> error ("Duplicate variable declaration detected!!: " ++ show ident)
-        -- ArrayTypeDenoter arrayType -> generateArrayType i arrayType
         (Base baseType, False) -> do
             sl <- nextSlot
             putVariable ident (varness, typ, sl) 
@@ -442,6 +441,7 @@ generateReadStatement var = do
             FloatType   -> "read_real"
             BoolType    -> "read_bool"
     writeInstruction "call_builtin" [name]
+    nextRegister
     (ref, _, sl) <- variableLocation var
     case ref of
         False -> writeInstruction "store" [show sl, showReg regZero]
@@ -485,10 +485,10 @@ matchGoatTypeLvalueType (Matrix _ _ _) (LMatrixRef _ _ _ _) = do return ()
 matchGoatTypeLvalueType _ _ = error "Variable not properly indexed"
 
 --returns the reference type, data type and location of a named variable
--- location is slotnum if its a value (bool=false) and register num if its a reference (bool=true)
+-- location is slotnum but when isRef=True, the slot contains an address rather than a value
 variableLocation :: Lvalue -> Codegen (Bool, BaseType, Int)
 variableLocation (LId pos id) = do
--- Single variable info
+-- Single variable 
     (isReference, goatType, slot) <- getVariable id
     matchGoatTypeLvalueType goatType (LId pos id)
     if not isReference then do
@@ -497,7 +497,7 @@ variableLocation (LId pos id) = do
         r <- nextRegister
         writeInstruction "load" [showReg r, show slot]
         return (isReference, goatType2BaseType goatType, r)
--- Array element info
+-- Array element 
 variableLocation (LArrayRef pos id expr) = do
     (isReference, goatType, slot) <- getVariable id
     matchGoatTypeLvalueType goatType (LArrayRef pos id expr)
@@ -510,7 +510,7 @@ variableLocation (LArrayRef pos id expr) = do
             writeInstruction "sub_offset" [showReg r, showReg r, showReg reg]
             return (True, goatType2BaseType goatType, r)
         (_) -> error "Array indicies must be integers"
--- Matrix element info
+-- Matrix element 
 variableLocation (LMatrixRef pos id expr1 expr2) = do
     (isReference, goatType, slot) <- getVariable id
     matchGoatTypeLvalueType goatType (LMatrixRef pos id expr1 expr2)

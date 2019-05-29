@@ -200,13 +200,24 @@ begin
     call refMod (ia[0]);
     write ia[0];
     write "\n";
-    write "\n";
 
     #array indexing with read variables
     ia[0] := 10;
     ia[1] := 11;
-    read i1;
+    #read i1;
     write ia[i1];
+    write "\n";
+
+    #reading into array variables
+    read ia[0];
+    write ia[0];
+    write "\n";
+    read ia[1];
+    write ia[0];
+    write "\n";
+    write ia[1];
+    write "\n";
+
 end
 
 proc refMod(ref int num) 

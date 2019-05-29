@@ -1,0 +1,4 @@
+proc testerror4()
+int a[];
+begin
+end

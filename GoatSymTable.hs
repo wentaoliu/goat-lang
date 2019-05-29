@@ -1,11 +1,14 @@
 module GoatSymTable where
 
-import Data.Map (
-    Map,
-    (!),
-    insert
-    )
-import qualified Data.Map as Map
+---------------------------------------------------------------------------
+--  Symbol table, for the Goat compiler
+--
+--  Author: Wumpus-Killers (Wentao Liu, Raymond Sun, Zeyu Huang, Yiqun Wang)
+-- 
+--  A symbol table and helper functions 
+---------------------------------------------------------------------------
+
+import Data.Map
 import GoatAST ( GoatType )
 
 type Reg = Int
@@ -16,39 +19,37 @@ type Symbols = (
     -- for each variable, its varness, type, and starting slot number
     Map String (Bool, GoatType, Int),
     -- type for each value in register
-    Map Reg GoatType,
-    -- for each array variable, its lower and upper bound
-    Map String (Int, Int)
+    Map Reg GoatType
     )
 
 -- helper functions initialising/getting/setting the symbol table
 initSymbols :: Symbols
-initSymbols = (Map.empty, Map.empty, Map.empty, Map.empty)
+initSymbols = (empty, empty, empty)
 
 insertRegType :: Reg -> GoatType -> Symbols -> Symbols
-insertRegType r t (a, b, map, d) = (a, b, insert r t map, d)
+insertRegType r t (a, b, map) = (a, b, insert r t map)
 
 lookupRegType :: Reg -> Symbols -> GoatType
-lookupRegType r (_, _, map, _) = (map ! r)
+lookupRegType r (_, _, map) = (map ! r)
 
 insertVariable :: String -> (Bool, GoatType, Int) -> Symbols -> Symbols
-insertVariable name val (a, map, c, d) =
-    (a, insert name val map, c, d)
+insertVariable name val (a, map, c) =
+    (a, insert name val map, c)
 
 lookupVariable :: String -> Symbols -> (Bool, GoatType, Int)
-lookupVariable name (_, map, _, _) = (map ! name)
-
-insertArrayBounds :: String -> (Int, Int) -> Symbols -> Symbols
-insertArrayBounds name val (a, b, c, map) = (a, b, c, insert name val map)
-
-lookupArrayBounds :: String -> Symbols -> (Int, Int)
-lookupArrayBounds name (_, _, _, map) = (map ! name)
+lookupVariable name (_, map, _) = (map ! name)
 
 insertProcedure :: String -> [(Bool, GoatType)] -> Symbols -> Symbols
-insertProcedure name vals (map, b, c, d) = (insert name vals map, b, c, d)
+insertProcedure name vals (map, b, c) = (insert name vals map, b, c)
 
 lookupProcedure :: String -> Symbols -> [(Bool, GoatType)]
-lookupProcedure name (map, _, _, _) = (map ! name)
+lookupProcedure name (map, _, _) = (map ! name)
 
 clearVariables :: Symbols -> Symbols
-clearVariables (a, _, c, d) = (a, Map.empty, c, d)
+clearVariables (a, _, c) = (a, empty, c)
+
+varMembership :: String -> Symbols -> Bool
+varMembership ident (_,map,_) = member ident map 
+
+procMembership :: String -> Symbols -> Bool
+procMembership ident (map,_,_) = member ident map 

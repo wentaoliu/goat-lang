@@ -23,7 +23,7 @@ lexer
      , Q.reservedNames   = myReserved
      , Q.reservedOpNames = myOpnames
      })
-
+ 
 whiteSpace = Q.whiteSpace lexer
 lexeme     = Q.lexeme lexer
 natural    = Q.natural lexer

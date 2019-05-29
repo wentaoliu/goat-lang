@@ -1,4 +1,0 @@
-proc main()
-begin
-    write "Hello, kid!\n";
-end

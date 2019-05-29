@@ -1,0 +1,36 @@
+proc one()
+    int a;
+    int b;
+    int c;
+begin
+    read a;
+    read b[2];
+    read c[3+2,6];
+end
+
+proc two()
+    int a;
+    int b;
+    int c;
+begin
+    read a;
+    read b[2];
+    read c[3+2,6];
+end
+
+proc three()
+    int a;
+    int b;
+    int c;
+begin
+    read a;
+    read b[2];
+    read c[3+2,6];
+end
+
+proc main()
+begin
+    call one();
+    call two();
+    call three();
+end

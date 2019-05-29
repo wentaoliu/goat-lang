@@ -1,0 +1,29 @@
+proc main()
+    int a[2];
+    int b;
+begin
+  a[2] := 3;
+  read b;
+
+  write 101;
+  write "abc";
+
+  if true then
+    write 102;
+    write 103;
+  fi
+
+  if false then
+    write 10.4;
+    write 10.5;
+  else 
+    write "abcd";
+    write "abcde";
+  fi
+
+
+  while true do
+    write 1010;
+    write true;
+  od
+end

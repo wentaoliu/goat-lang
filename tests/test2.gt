@@ -1,0 +1,18 @@
+proc test2()
+begin
+if (a>b) then
+c:=true;
+c:=false;
+fi
+if a>b then
+d:=a;
+e:=1;
+else
+d:=b;
+e:=2;
+fi
+while a>b do
+b:=b+1;
+write b;
+od
+end

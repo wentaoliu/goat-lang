@@ -1,0 +1,53 @@
+proc main()
+
+    int a [5];
+    int b;
+    int c;
+
+
+begin
+
+    write "BAAAAAAAAAAAAAAAAAAAAAAAAAA!\n"; 
+
+    write "Welcome to quantum bogo sort, for additional info please visit: http://wiki.c2.com/?QuantumBogoSort\n";
+
+    write "disclaimer, this algorithim may destory your universe, the author of this code will not take any responsibilities for the annhiliation of your world.\n";
+
+
+    write "Please press 1 to continue, press 2 to terminate\n";
+    read b;
+
+    if b=1 then
+
+       write "Please enter a random number\n";
+       read a[0];
+       write "Please enter more numbers\n";
+       read a[1];
+       write "Please enter more numbers\n";
+       read a[2];
+       write "Please enter more numbers\n";
+       read a[3];
+       write "Please enter more number\n";
+       read a[4];
+       write "Begin Sorting";
+
+       c := 0;
+
+       #Since the number ordering is random... The list is already random, therefore no need to sort.
+
+       while c < 5 do
+
+       if a[c] > a[c-1] then
+          write "TERMINATING UNIVERSE PLEASE STAND BY\n";
+          write "ERROR: CANNOT FIND UNIVERSE TERMINATING PROGRAM\n";
+	  write "A SUPPORT TICKET HAS BEEN SUBMITTED TO MICROSOFT TECH SUPPORT\n";
+          c := 100;
+       fi
+       c := c+1;
+       od
+       
+    else
+      write "Stopping";
+    fi
+
+end

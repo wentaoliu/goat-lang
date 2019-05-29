@@ -3,7 +3,7 @@ where
 
 -------------------------------------------------------------------------
 --  Main function for a Goat compiler.  
---  At this stage, only a parser and pretty-printer has been implemented.
+--  A parser, pretty-printer and compiler has been implemented.
 --
 --  Harald Sondergaard, April 2019
 -------------------------------------------------------------------------

@@ -1,0 +1,253 @@
+# program must have a 0 arg procedure main
+# fixed: our generator doesnt check this - only caught at oz usage stage
+proc main ()
+#proc notmain()
+    int i1;
+    int i2;
+    #int i1; #fixed:  variables must only be declared once
+    float f1;
+    float f2;
+    bool b1;
+    bool b2;
+
+    int ia[2];
+    int im[2,3];
+    float fa[2];
+    float fm[2,3];
+    bool ba[2];
+    bool bm[2,3];
+
+begin
+
+    # basic writing
+    write i1;
+    write f1;
+    write b1;
+    write ia[0];
+    write im[0,0];
+    write fa[1];
+    write fm[0,2];
+    write ba[1];
+    write bm[1,2];
+
+    # !=, = must have acceptable typed args (int/int, bool/bool, int/float ...)
+    write i1 = i2;
+    write f1 = f2;
+    write b1 = b2;
+    write i1 = f1;
+    write f1 = i1;
+
+    write i1 != i2;
+    write f1 != f2;
+    write b1 != b2;
+    write i1 != f1;
+    write f1 != i1;
+
+    # successful failure, boolan and int is noncomparable
+    # write b1 = i2;
+
+    # comparison operators must be correctly typed
+    write i1 < i2;
+    write i1 <= i2;
+    write i1 > i2;
+    write i1 >= i2;
+
+    write f1 < f2;
+    write f1 <= f2;
+    write f1 > f2;
+    write f1 >= f2;
+
+    write b1 < b2;
+    write b1 <= b2;
+    write b1 > b2;
+    write b1 >= b2;
+
+    write i1 < f1;
+    write i1 <= f1;
+    write i1 > f1;
+    write i1 >= f1;
+
+    # successful failure
+    #write b1 < i2;
+    #write b1 <= i2;
+    #write b1 > i2;
+    #write b1 >= i2;
+
+    #Arithmetic operators
+    i2 := 1;
+    f2 := 1.5;
+
+    write i1 + i2;
+    write i1 - i2;
+    write i1 * i2;
+    write i1 / i2;
+
+    write f1 + f2;
+    write f1 - f2;
+    write f1 * f2;
+    write f1 / f2;
+
+    write i1 + f2;
+    write i1 - f2;
+    write i1 * f2;
+    write i1 / f2;
+
+    write f1 + i2;
+    write f1 - i2;
+    write f1 * i2;
+    write f1 / i2;
+
+    # logical operators
+    write b1 && b2;
+    write b1 || b2;
+    write !b1;
+
+    write 1 > 0;
+    write 1 = 1 && ! (2 = 3);
+
+    # nonstrictness logical ops
+    write "\n";
+    write 0 > 8 && 3/0 = 5;  #successful success, the unevaluateable second arg is ignore if the first arg satisfies the logical oparator
+    write 4 = 4 || 3/0 = 5;
+    #write 3/0 = 5 && 0 > 8;  #successful failure, the impossible first arg is tested first and fails runtime
+    
+    # Assignment
+    i1 := 1;
+    #i1 := 1.0;  #successful failure, cant assign float to int
+    #i1 := b1;  #successful failure, cant assign bool to int
+
+    f1 := 2.45;
+    f1 := 5;
+    #f1 := b1;   #successful failure, cant assign bool to float
+
+    #b1 := 5;   #successful failure
+    #b1 := 2.45;   #successful failure
+    b1 := b2;
+    b1 := true;
+    b2 := b1;
+
+    # Compound statements
+    #test basic if stmt
+    if true then
+        write true;
+    fi 
+    # test basic if else stmt
+    if true then 
+        write true;
+    else 
+        write false;
+    fi
+    #test basic while stmt
+    while i1 < 3 do 
+        i1 := i1 + 1;
+    od
+    write i1;
+
+    # 
+    # fixed: successful failure: guard condition needs to be bool
+    #if 5 then 
+    #    write "\n";
+    #    write "if condition needs to be bool";
+    #fi
+    # i1 is set in read statment above. I set it as 1 for test 
+    #while i1 do
+    #    i1 := i1 - 1;
+    #od
+
+    #procedure call related
+    call p(i1, i2); #fixed: printing i2 used to get register no value or something like that
+    #call p(i1,i2,f1); #successful failure, proc aristy mismatch
+    #call p(f1,f2); #successful failure, incorrect arg type
+
+    # Array related
+    #ia := 0; #successful failure, ia array must be indexed 
+    #call p(ia, im); #successful failure, args must not be unindexed array
+    #ia[b1] := 1; #successful failure, array indicies must be ints [done]
+    
+    write "\n";
+    ia[0] := 69;
+    ia[1] := 11;
+    write "\nia values: ";
+    write ia[0];
+    write ia[1];
+    call p(3, ia[1]);
+
+    # Read statments (commented out because its easier to run without having to input)
+    # BUG (maybe?) when entering a float for int num, i1 becomes 0 and the value is passed into the next read
+    # actually this might be a problem with the oz executable, it uses scanf so 0.99 will will read 0 as the int and leave .99 in the buffer ???
+    #read i1;
+    #write i1;
+    #write "\n";
+    #read f1;
+    #write f1;
+    #write "\n";
+    #read b1;
+    #write b1;
+    #write "\n";
+
+    #successful modification of i1, prints 10 and then prints 0 after proc call
+    i1 := 10;
+    write i1;
+    write "\n";
+    call refMod (i1);
+    write i1;
+    write "\n";
+
+    #successful modification of ia[0]
+    ia[0] := 9;
+    write ia[0];
+    write "\n";
+    call refMod (ia[0]);
+    write ia[0];
+    write "\n";
+    write "\n";
+
+    #array indexing with read variables
+    ia[0] := 10;
+    ia[1] := 11;
+    read i1;
+    write ia[i1];
+end
+
+proc refMod(ref int num) 
+begin
+    num := 0;
+end
+
+# fixed: ducplicate procedures are not caught at compile time
+#proc p(val int in, ref int out)
+#begin
+#    write "\n";
+#    write "proc p";
+#    write "\n";
+#    write "passed val arg: ";
+#    write in;
+#    write "\n";
+#    write "passed reference arg: ";
+#    #fixed: register not valid when trying to access var: out
+#    write out;
+#    write "\n";
+#end
+
+proc p(val int in, ref int out)
+begin
+    write "\n";
+    write "proc p";
+    write "\n";
+    write "passed val arg: ";
+    write in;
+    write "\n";
+    write "passed reference arg: ";
+    #fixed: register not valid when trying to access var: out
+    write out;
+    write "\n";
+end
+
+#fixed: identical param names are not caught at compile time
+#proc identical_param(val int num, val float num)
+#begin
+#    write "\n";
+#    write num;
+#    write "\n";
+#    write "identical parameter names";
+#end

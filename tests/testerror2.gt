@@ -1,0 +1,4 @@
+proc testerror2()
+begin
+int x;
+end

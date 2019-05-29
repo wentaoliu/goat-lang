@@ -1,0 +1,4 @@
+proc test3()
+begin
+writea:= 5.5;
+end

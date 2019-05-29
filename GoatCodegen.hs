@@ -444,43 +444,6 @@ loadAddress reg (MatrixRef _ id expr1 expr2) = do
         otherwise -> error $ "expected matrix variable"
 
 
-<<<<<<< HEAD
-cgCompoundStatement :: [Stmt] -> Codegen ()
-cgCompoundStatement stmt = do
-    writeComment "compound statement"
-    cgCompoundStatement' stmt
-
-cgCompoundStatement' :: [Stmt] -> Codegen ()
-cgCompoundStatement' [] = return ()
-cgCompoundStatement' (x:xs) = do
-    r <- resetRegister
-    cgStatement x
-    cgCompoundStatement' xs
-
-cgStatement :: Stmt -> Codegen ()
-cgStatement (Write _ expr) = cgWriteStatement expr
-cgStatement (If _ expr stmts) = cgIfStatement expr stmts
-cgStatement (IfElse _ expr stmts1 stmts2) = cgIfElseStatement expr stmts1 stmts2
-cgStatement (While _ expr stmts) = cgWhileStatement expr stmts
-cgStatement (Assign _ lvalue expr) = cgAssignmentStatement lvalue expr
-cgStatement (Read _ lvalue) = cgReadStatement lvalue
--- cgStatement (ProcCall _ ident exprs) = cgProcCallStatement ident exprs
-
--- -- generate code to call a procedure. Put arguments in registers starting at r0
--- cgProcCallStatement :: Ident -> [Expr] -> Codegen ()
--- cgProcCallStatement (p, paramList) = do
---     formalParameters <- getProcedure p
---     case paramList of
---         Nothing -> return ()
---         Just arguments -> do
---             -- prepare registers
---             resetRegister
---             cgAllocateRegs arguments
---             -- put in arguments
---             cgPassArgument 1 arguments formalParameters
---     writeInstruction "call" [p]
-=======
->>>>>>> master
 
 -- generate code to read input from console
 generateReadStatement :: Lvalue -> Codegen ()
@@ -682,11 +645,6 @@ needCastType FloatType  IntType   = CastRight
 needCastType FloatType  BoolType  = error $ "expected real, found boolean"
 needCastType BoolType   typ       = error $ "expected boolean, found " ++ show typ
 needCastType IntType    typ       = error $ "expected integer, found " ++ show typ
-<<<<<<< HEAD
-
-
-=======
->>>>>>> master
 
 ---------------
 --  expressions
@@ -941,16 +899,6 @@ generateTypeCasting r1 r2 = do
         _ -> error $ "arithmetic/comparision cannot be done between " ++
                      (show t1) ++ " and " ++ (show t2)
 
-<<<<<<< HEAD
--- helper function for cgPrepareArithmetic
--- cgIntToReal :: Reg -> Codegen ()
--- cgIntToReal reg = do
---     writeInstruction "int_to_real" [showReg reg, showReg reg]
---     putRegType reg (Base FloatType)
-
-
-=======
->>>>>>> master
 -- check that logical expressions involve two booleans
 analyseLogicalOp :: Reg -> Reg -> Codegen ()
 analyseLogicalOp r1 r2 = do
@@ -961,28 +909,17 @@ analyseLogicalOp r1 r2 = do
         _ -> error $ "logical operation cannot be done between " ++
                      (show t1) ++ " and " ++ (show t2)
 
-<<<<<<< HEAD
-cgPrepareComparison :: Reg -> Reg -> Codegen (OpType)
-cgPrepareComparison r1 r2 = do
-=======
 -- Generate instructions for casting for comparison operations
 -- Also does checking types for comparison operations
 generatePrepareComparison :: Reg -> Reg -> Codegen (OpType)
 generatePrepareComparison r1 r2 = do
->>>>>>> master
     t1 <- getRegType r1
     t2 <- getRegType r2
     if (t1, t2) == (Base BoolType, Base BoolType)
     then do return (OpType BoolType)
-<<<<<<< HEAD
-    else do cgPrepareArithmetic r1 r2
-
-
-=======
     else do generateTypeCasting r1 r2
 
 
 checkBoolean :: BaseType -> Codegen (Bool)
 checkBoolean BoolType = do return True
 checkBoolean otherType = error ("Expected boolean, got " ++ (show otherType))
->>>>>>> master

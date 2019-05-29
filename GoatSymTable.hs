@@ -1,14 +1,22 @@
 module GoatSymTable where
 
+---------------------------------------------------------------------------
+--  Symbol table, for the Goat compiler
+--
+--  Author: Wumpus-Killers (Wentao Liu, Raymond Sun, Zeyu Huang, Yiqun Wang)
+-- 
+--  A symbol table and helper functions 
+---------------------------------------------------------------------------
+
 import Data.Map
 import GoatAST ( GoatType )
 
 type Reg = Int
 
 type Symbols = (
-    -- for each procedure, for each formal parameter, its varness and type
+    -- for each procedure, for each formal parameter, its refernce type and basetype
     Map String [(Bool, GoatType)],
-    -- for each variable, its varness, type, and starting slot number
+    -- for each variable, its reference type, base type, and starting slot number
     Map String (Bool, GoatType, Int),
     -- type for each value in register
     Map Reg GoatType

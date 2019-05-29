@@ -10,7 +10,7 @@ where
 
 import GoatParser (ast)
 import PrettyPrinter (prettyPrint)
-import GoatCodegen (generateCode)
+import GoatCodegen (outputCode)
 import System.Environment (getProgName, getArgs)
 import System.Exit (exitWith, ExitCode(..))
 
@@ -32,7 +32,7 @@ main
             let output = ast input
             case output of
               Right tree 
-                -> generateCode tree
+                -> outputCode tree
               Left err 
                 -> do { putStr "Parse error at "
                       ; print err
